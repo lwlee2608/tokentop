@@ -10,9 +10,14 @@ import (
 	"github.com/lwlee2608/tokenburn/pkg/codex"
 )
 
-const refreshInterval = 30 * time.Second
+const (
+	refreshInterval = 30 * time.Second
+	retryDelay      = 5 * time.Second
+	maxRetries      = 3
+)
 
 type tickMsg time.Time
+type retryMsg struct{}
 
 type usageMsg struct {
 	usage *codex.Usage
@@ -22,9 +27,11 @@ type usageMsg struct {
 type Model struct {
 	auth      *codex.Auth
 	usage     *codex.Usage
-	err       error
+	fetchErr  string
+	retries   int
 	lastFetch time.Time
 	version   string
+	width     int
 }
 
 func New(auth *codex.Auth, version string) Model {
@@ -37,37 +44,68 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		}
 	case tickMsg:
+		m.retries = 0
 		return m, tea.Batch(fetchUsage(m.auth), tick())
+	case retryMsg:
+		return m, fetchUsage(m.auth)
 	case usageMsg:
-		m.usage = msg.usage
-		m.err = msg.err
-		m.lastFetch = time.Now()
+		if msg.err != nil {
+			m.fetchErr = msg.err.Error()
+			if m.retries < maxRetries {
+				m.retries++
+				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return retryMsg{} })
+			}
+		} else {
+			m.usage = msg.usage
+			m.fetchErr = ""
+			m.retries = 0
+			m.lastFetch = time.Now()
+		}
 	}
 	return m, nil
+}
+
+func (m Model) barWidth() int {
+	w := m.width - barPadding
+	if w < 10 {
+		w = 10
+	}
+	return w
 }
 
 func (m Model) View() string {
 	var b strings.Builder
 
-	// Header
-	title := fmt.Sprintf("┌────────── tokenburn %s %s┐", m.version, strings.Repeat("─", barWidth+2))
+	// Header — center "tokenburn <version>"
+	label := fmt.Sprintf(" tokenburn %s ", m.version)
+	sideLen := (m.width - len(label) - 2) / 2 // -2 for ┌ and ┐
+	if sideLen < 0 {
+		sideLen = 0
+	}
+	rightLen := m.width - 2 - sideLen - len(label)
+	if rightLen < 0 {
+		rightLen = 0
+	}
+	title := "┌" + strings.Repeat("─", sideLen) + label + strings.Repeat("─", rightLen) + "┐"
 	b.WriteString(headerStyle.Render(title))
 	b.WriteByte('\n')
 
-	if m.usage == nil && m.err == nil {
+	if m.usage == nil && m.fetchErr == "" {
 		b.WriteString(dimStyle.Render(" Loading..."))
 		b.WriteByte('\n')
 		return b.String()
 	}
 
-	if m.err != nil {
-		b.WriteString(pctStyle(red).Render(fmt.Sprintf(" Error: %v", m.err)))
+	if m.usage == nil && m.fetchErr != "" {
+		b.WriteString(pctStyle(red).Render(fmt.Sprintf(" ⚠️  %s (retry %d/%d)", m.fetchErr, m.retries, maxRetries)))
 		b.WriteByte('\n')
 		b.WriteByte('\n')
 		b.WriteString(m.footer())
@@ -75,20 +113,27 @@ func (m Model) View() string {
 	}
 
 	u := m.usage
+
+	if m.fetchErr != "" {
+		b.WriteString(pctStyle(yellow).Render(fmt.Sprintf(" ⚠️  %s (retry %d/%d)", m.fetchErr, m.retries, maxRetries)))
+		b.WriteByte('\n')
+	}
 	b.WriteString(dimStyle.Render(fmt.Sprintf(" Plan: %s", u.PlanType)))
 	b.WriteByte('\n')
 	b.WriteByte('\n')
 
+	bw := m.barWidth()
+
 	// 5-hour window
 	b.WriteString(renderBar(
-		"5h Limit", u.PrimaryUsedPercent,
+		"5h Limit", u.PrimaryUsedPercent, bw,
 		fmt.Sprintf("resets %s (%s)", u.PrimaryResetAt.Local().Format("3:04 PM"), timeUntil(u.PrimaryResetAt)),
 	))
 	b.WriteByte('\n')
 
 	// Weekly window
 	b.WriteString(renderBar(
-		"Weekly", u.SecondaryUsedPercent,
+		"Weekly", u.SecondaryUsedPercent, bw,
 		fmt.Sprintf("resets %s (%s)", u.SecondaryResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(u.SecondaryResetAt)),
 	))
 
@@ -111,15 +156,15 @@ func (m Model) footer() string {
 		ts = "..."
 	}
 	info := fmt.Sprintf(" refresh: %ds | updated: %s | q to quit", int(refreshInterval.Seconds()), ts)
-	foot := dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", barWidth+38))
+	foot := dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", m.width))
 	return foot
 }
 
-func renderBar(label string, usedPercent float64, resetInfo string) string {
+func renderBar(label string, usedPercent float64, barWidth int, resetInfo string) string {
 	used := math.Min(usedPercent, 100)
 	remaining := 100 - used
 
-	filledCount := int(math.Round(used / 100 * barWidth))
+	filledCount := int(math.Round(used / 100 * float64(barWidth)))
 	emptyCount := barWidth - filledCount
 
 	c := usageColor(used)
