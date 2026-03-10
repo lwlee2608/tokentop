@@ -1,16 +1,10 @@
 # tokenburn
 
+[![CI](https://github.com/lwlee2608/tokenburn/actions/workflows/ci.yml/badge.svg)](https://github.com/lwlee2608/tokenburn/actions/workflows/ci.yml)
+
 A terminal dashboard for monitoring your [OpenAI Codex](https://chatgpt.com/codex) usage limits in real time.
 
 ![tokenburn screenshot](screenshot.jpg)
-
-## Features
-
-- Live-updating TUI powered by [Bubble Tea](https://github.com/charmbracelet/bubbletea)
-- Tracks 5-hour, weekly, and code review rate limits
-- Color-coded bars (green / yellow / red) based on usage level
-- Auto-refreshes every 30 seconds
-- Auto-retries on transient API failures
 
 ## Install
 
