@@ -125,21 +125,35 @@ func (m Model) View() string {
 	bw := m.barWidth()
 
 	// 5-hour window
-	b.WriteString(renderBar(
-		"5h Limit", u.PrimaryUsedPercent, bw,
-		fmt.Sprintf("resets %s (%s)", u.PrimaryResetAt.Local().Format("3:04 PM"), timeUntil(u.PrimaryResetAt)),
-	))
-	b.WriteByte('\n')
+	if w := u.RateLimit.PrimaryWindow; w != nil {
+		b.WriteString(renderBar("5h Limit", w.UsedPercent, bw,
+			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("3:04 PM"), timeUntil(w.ResetTime())),
+		))
+		b.WriteByte('\n')
+	}
 
 	// Weekly window
-	b.WriteString(renderBar(
-		"Weekly", u.SecondaryUsedPercent, bw,
-		fmt.Sprintf("resets %s (%s)", u.SecondaryResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(u.SecondaryResetAt)),
-	))
-
-	if u.CreditsHasCredits {
+	if w := u.RateLimit.SecondaryWindow; w != nil {
+		b.WriteString(renderBar("Weekly", w.UsedPercent, bw,
+			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime())),
+		))
 		b.WriteByte('\n')
-		b.WriteString(dimStyle.Render(fmt.Sprintf(" Credits: %s (unlimited: %v)", u.CreditsBalance, u.CreditsUnlimited)))
+	}
+
+	// Code review
+	if w := u.CodeReviewRateLimit.PrimaryWindow; w != nil {
+		b.WriteString(renderBar("Code Review", w.UsedPercent, bw,
+			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime())),
+		))
+		b.WriteByte('\n')
+	}
+
+	if u.Credits.HasCredits {
+		bal := "n/a"
+		if u.Credits.Balance != nil {
+			bal = *u.Credits.Balance
+		}
+		b.WriteString(dimStyle.Render(fmt.Sprintf(" Credits: %s (unlimited: %v)", bal, u.Credits.Unlimited)))
 		b.WriteByte('\n')
 	}
 
