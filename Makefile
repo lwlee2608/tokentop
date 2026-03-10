@@ -3,8 +3,9 @@ GO = $(shell which go 2>/dev/null)
 APP             := tokenburn
 VERSION         ?= v0.1.0
 LDFLAGS         := -ldflags "-X main.AppVersion=$(VERSION)"
+PREFIX          := $(HOME)/.local
 
-.PHONY: all build clean run test
+.PHONY: all build clean run test install
 
 all: clean build
 
@@ -17,3 +18,6 @@ run:
 	$(GO) run $(LDFLAGS) cmd/$(APP)/*.go
 test:
 	$(GO) test -v ./...
+install: build
+	install -d $(PREFIX)/bin
+	install -m 755 bin/$(APP) $(PREFIX)/bin/$(APP)
