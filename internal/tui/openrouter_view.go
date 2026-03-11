@@ -47,9 +47,9 @@ func (m Model) orSection() string {
 	}
 	b.WriteString(dimStyle.Render(fmt.Sprintf("  Key: %s", keyLabel)))
 	b.WriteByte('\n')
-	b.WriteByte('\n')
 
 	if u.Key.Limit > 0 {
+		b.WriteByte('\n')
 		usedPct := (u.Key.Limit - u.Key.LimitRemaining) / u.Key.Limit * 100
 		b.WriteString(renderBar("Credit Limit", usedPct, bw,
 			fmt.Sprintf("$%.4f remaining (resets %s)", u.Key.LimitRemaining, u.Key.LimitReset),
@@ -62,8 +62,7 @@ func (m Model) orSection() string {
 	b.WriteByte('\n')
 
 	if u.Key.IsManagementKey {
-		b.WriteString(renderORCredits(u))
-		b.WriteString(renderORActivity(u))
+		b.WriteString(renderORSummary(u))
 		b.WriteString(m.renderORModels(u))
 		b.WriteString(renderORKeys(u))
 	}
@@ -72,29 +71,26 @@ func (m Model) orSection() string {
 	return b.String()
 }
 
-func renderORCredits(u *openrouter.Usage) string {
-	if u.Credits == nil {
+func renderORSummary(u *openrouter.Usage) string {
+	if u.Credits == nil && u.Activity == nil {
 		return ""
 	}
-	return dimStyle.Render(fmt.Sprintf("\n  Credits — Total: $%.4f | Used: $%.4f | Remaining: $%.4f",
-		u.Credits.Total, u.Credits.Used, u.Credits.Remaining)) + "\n"
-}
-
-func renderORActivity(u *openrouter.Usage) string {
-	if u.Activity == nil {
-		return ""
-	}
-	t := u.Activity.Totals
 	var b strings.Builder
 	b.WriteByte('\n')
-	b.WriteString("  " + labelStyle.Render("Activity") + "\n")
-
-	line := fmt.Sprintf("  Spend: $%.4f | Requests: %.0f | Tokens: %s prompt + %s completion",
-		t.Spend, t.Requests, formatTokens(t.PromptTokens), formatTokens(t.CompletionTokens))
-	if t.ReasoningTokens > 0 {
-		line += fmt.Sprintf(" + %s reasoning", formatTokens(t.ReasoningTokens))
+	parts := make([]string, 0, 3)
+	if u.Credits != nil {
+		parts = append(parts, fmt.Sprintf("Credits $%.2f/$%.2f left", u.Credits.Remaining, u.Credits.Total))
 	}
-	b.WriteString(dimStyle.Render(line))
+	if u.Activity != nil {
+		t := u.Activity.Totals
+		parts = append(parts, fmt.Sprintf("Spend $%.2f | %.0f req", t.Spend, t.Requests))
+		tokens := fmt.Sprintf("%s in + %s out", formatTokens(t.PromptTokens), formatTokens(t.CompletionTokens))
+		if t.ReasoningTokens > 0 {
+			tokens += fmt.Sprintf(" + %s reason", formatTokens(t.ReasoningTokens))
+		}
+		parts = append(parts, tokens)
+	}
+	b.WriteString(dimStyle.Render("  " + strings.Join(parts, " | ")))
 	b.WriteByte('\n')
 	return b.String()
 }
@@ -114,31 +110,30 @@ func (m Model) renderORModels(u *openrouter.Usage) string {
 
 	maxSpend := models[0].Spend
 	barWidth := m.modelBarWidth()
-	for _, m := range models {
-		label := truncate(m.Model, 28)
-		b.WriteString(dimStyle.Render(fmt.Sprintf("  %-28s  $%9.4f", label, m.Spend)))
-		b.WriteByte('\n')
-		b.WriteString(fmt.Sprintf("  %s  %s\n",
-			renderModelBar(m.Spend, maxSpend, barWidth),
-			dimStyle.Render(fmt.Sprintf("%.0f req", m.Requests)),
+	for i, model := range models {
+		label := truncate(model.Model, 22)
+		b.WriteString(fmt.Sprintf("  %s  %s  %s  %s\n",
+			dimStyle.Render(fmt.Sprintf("%-22s", label)),
+			dimStyle.Render(fmt.Sprintf("$%7.2f", model.Spend)),
+			renderModelBar(model.Spend, maxSpend, barWidth, i),
+			dimStyle.Render(fmt.Sprintf("%4.0f req", model.Requests)),
 		))
-		b.WriteByte('\n')
 	}
 	return b.String()
 }
 
 func (m Model) modelBarWidth() int {
-	w := m.width - 26
-	if w < 12 {
-		return 12
+	w := m.width - 44
+	if w < 8 {
+		return 8
 	}
-	if w > 44 {
-		return 44
+	if w > 28 {
+		return 28
 	}
 	return w
 }
 
-func renderModelBar(spend, maxSpend float64, width int) string {
+func renderModelBar(spend, maxSpend float64, width int, colorIndex int) string {
 	if width < 1 {
 		width = 1
 	}
@@ -153,7 +148,7 @@ func renderModelBar(spend, maxSpend float64, width int) string {
 		filled = width
 	}
 
-	return modelBarFilledStyle.Render(strings.Repeat("█", filled)) +
+	return modelBarFilledStyle(colorIndex).Render(strings.Repeat("█", filled)) +
 		modelBarEmptyStyle.Render(strings.Repeat("░", width-filled))
 }
 
@@ -164,8 +159,6 @@ func renderORKeys(u *openrouter.Usage) string {
 	var b strings.Builder
 	b.WriteByte('\n')
 	b.WriteString("  " + labelStyle.Render("API Keys") + "\n")
-	b.WriteString(dimStyle.Render(fmt.Sprintf("  %-30s  %10s  %10s  %10s", "Key", "Daily", "Weekly", "Monthly")))
-	b.WriteByte('\n')
 
 	keys := u.APIKeys
 	if len(keys) > maxKeys {
@@ -176,8 +169,8 @@ func renderORKeys(u *openrouter.Usage) string {
 		if name == "" {
 			name = k.Name
 		}
-		b.WriteString(dimStyle.Render(fmt.Sprintf("  %-30s  $%9.4f  $%9.4f  $%9.4f",
-			truncate(name, 30), k.UsageDaily, k.UsageWeekly, k.UsageMonthly)))
+		b.WriteString(dimStyle.Render(fmt.Sprintf("  %-18s d:$%6.2f  w:$%6.2f  m:$%6.2f",
+			truncate(name, 18), k.UsageDaily, k.UsageWeekly, k.UsageMonthly)))
 		b.WriteByte('\n')
 	}
 	return b.String()
