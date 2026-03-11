@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/lwlee2608/adder v0.3.2
 	github.com/stretchr/testify v1.11.1
 )
 

@@ -1,0 +1,7 @@
+providers:
+  codex:
+    enabled: true
+  openrouter:
+    enabled: true
+  anthropic:
+    enabled: false # not yet implemented

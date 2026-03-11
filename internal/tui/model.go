@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lwlee2608/tokentop/pkg/codex"
+	"github.com/lwlee2608/tokentop/pkg/openrouter"
 )
 
 const (
@@ -17,56 +18,110 @@ const (
 )
 
 type tickMsg time.Time
-type retryMsg struct{}
 
-type usageMsg struct {
+type codexUsageMsg struct {
 	usage *codex.Usage
 	err   error
 }
 
-type Model struct {
-	auth      *codex.Auth
-	usage     *codex.Usage
-	fetchErr  string
-	retries   int
-	lastFetch time.Time
-	version   string
-	width     int
+type codexRetryMsg struct{}
+
+type orUsageMsg struct {
+	usage *openrouter.Usage
+	err   error
 }
 
-func New(auth *codex.Auth, version string) Model {
-	return Model{auth: auth, version: version}
+type orRetryMsg struct{}
+
+type Model struct {
+	version   string
+	width     int
+	lastFetch time.Time
+
+	codexAuth    *codex.Auth
+	codexUsage   *codex.Usage
+	codexErr     string
+	codexRetries int
+
+	orAuth    *openrouter.Auth
+	orUsage   *openrouter.Usage
+	orErr     string
+	orRetries int
+}
+
+func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, version string) Model {
+	return Model{
+		codexAuth: codexAuth,
+		orAuth:    orAuth,
+		version:   version,
+	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(fetchUsage(m.auth), tick())
+	cmds := []tea.Cmd{tick()}
+	if m.codexAuth != nil {
+		cmds = append(cmds, fetchCodexUsage(m.codexAuth))
+	}
+	if m.orAuth != nil {
+		cmds = append(cmds, fetchORUsage(m.orAuth))
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c":
+		if msg.String() == "q" || msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
+
 	case tickMsg:
-		m.retries = 0
-		return m, tea.Batch(fetchUsage(m.auth), tick())
-	case retryMsg:
-		return m, fetchUsage(m.auth)
-	case usageMsg:
+		m.codexRetries = 0
+		m.orRetries = 0
+		var cmds []tea.Cmd
+		if m.codexAuth != nil {
+			cmds = append(cmds, fetchCodexUsage(m.codexAuth))
+		}
+		if m.orAuth != nil {
+			cmds = append(cmds, fetchORUsage(m.orAuth))
+		}
+		cmds = append(cmds, tick())
+		return m, tea.Batch(cmds...)
+
+	case codexRetryMsg:
+		return m, fetchCodexUsage(m.codexAuth)
+
+	case orRetryMsg:
+		return m, fetchORUsage(m.orAuth)
+
+	case codexUsageMsg:
 		if msg.err != nil {
-			m.fetchErr = msg.err.Error()
-			if m.retries < maxRetries {
-				m.retries++
-				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return retryMsg{} })
+			m.codexErr = msg.err.Error()
+			if m.codexRetries < maxRetries {
+				m.codexRetries++
+				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return codexRetryMsg{} })
 			}
 		} else {
-			m.usage = msg.usage
-			m.fetchErr = ""
-			m.retries = 0
+			m.codexUsage = msg.usage
+			m.codexErr = ""
+			m.codexRetries = 0
+			m.lastFetch = time.Now()
+		}
+
+	case orUsageMsg:
+		if msg.err != nil {
+			m.orErr = msg.err.Error()
+			if m.orRetries < maxRetries {
+				m.orRetries++
+				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return orRetryMsg{} })
+			}
+		} else {
+			m.orUsage = msg.usage
+			m.orErr = ""
+			m.orRetries = 0
 			m.lastFetch = time.Now()
 		}
 	}
@@ -84,9 +139,9 @@ func (m Model) barWidth() int {
 func (m Model) View() string {
 	var b strings.Builder
 
-	// Header — center "tokentop <version>"
+	// Header
 	label := fmt.Sprintf(" tokentop %s ", m.version)
-	sideLen := (m.width - len(label) - 2) / 2 // -2 for ┌ and ┐
+	sideLen := (m.width - len(label) - 2) / 2
 	if sideLen < 0 {
 		sideLen = 0
 	}
@@ -98,49 +153,61 @@ func (m Model) View() string {
 	b.WriteString(headerStyle.Render(title))
 	b.WriteByte('\n')
 
-	if m.usage == nil && m.fetchErr == "" {
-		b.WriteString(dimStyle.Render(" Loading..."))
+	if m.codexAuth != nil {
+		b.WriteString(m.codexSection())
+	}
+	if m.orAuth != nil {
+		b.WriteString(m.orSection())
+	}
+
+	// TODO: anthropic section (not yet implemented)
+
+	b.WriteString(m.footer())
+	return b.String()
+}
+
+func (m Model) codexSection() string {
+	var b strings.Builder
+	b.WriteString(sectionStyle.Render(" Codex"))
+	b.WriteByte('\n')
+
+	if m.codexUsage == nil && m.codexErr == "" {
+		b.WriteString(dimStyle.Render("  Loading..."))
 		b.WriteByte('\n')
 		return b.String()
 	}
 
-	if m.usage == nil && m.fetchErr != "" {
-		b.WriteString(pctStyle(red).Render(fmt.Sprintf(" ⚠️  %s (retry %d/%d)", m.fetchErr, m.retries, maxRetries)))
+	if m.codexErr != "" {
+		c := yellow
+		if m.codexUsage == nil {
+			c = red
+		}
+		b.WriteString(pctStyle(c).Render(fmt.Sprintf("  ⚠️  %s (retry %d/%d)", m.codexErr, m.codexRetries, maxRetries)))
 		b.WriteByte('\n')
-		b.WriteByte('\n')
-		b.WriteString(m.footer())
-		return b.String()
+		if m.codexUsage == nil {
+			return b.String()
+		}
 	}
 
-	u := m.usage
-
-	if m.fetchErr != "" {
-		b.WriteString(pctStyle(yellow).Render(fmt.Sprintf(" ⚠️  %s (retry %d/%d)", m.fetchErr, m.retries, maxRetries)))
-		b.WriteByte('\n')
-	}
-	b.WriteString(dimStyle.Render(fmt.Sprintf(" Plan: %s", u.PlanType)))
-	b.WriteByte('\n')
-	b.WriteByte('\n')
-
+	u := m.codexUsage
 	bw := m.barWidth()
 
-	// 5-hour window
+	b.WriteString(dimStyle.Render(fmt.Sprintf("  Plan: %s", u.PlanType)))
+	b.WriteByte('\n')
+	b.WriteByte('\n')
+
 	if w := u.RateLimit.PrimaryWindow; w != nil {
 		b.WriteString(renderBar("5h Limit", w.UsedPercent, bw,
 			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("3:04 PM"), timeUntil(w.ResetTime())),
 		))
 		b.WriteByte('\n')
 	}
-
-	// Weekly window
 	if w := u.RateLimit.SecondaryWindow; w != nil {
 		b.WriteString(renderBar("Weekly", w.UsedPercent, bw,
 			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime())),
 		))
 		b.WriteByte('\n')
 	}
-
-	// Code review
 	if w := u.CodeReviewRateLimit.PrimaryWindow; w != nil {
 		b.WriteString(renderBar("Code Review", w.UsedPercent, bw,
 			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime())),
@@ -153,12 +220,63 @@ func (m Model) View() string {
 		if u.Credits.Balance != nil {
 			bal = *u.Credits.Balance
 		}
-		b.WriteString(dimStyle.Render(fmt.Sprintf(" Credits: %s (unlimited: %v)", bal, u.Credits.Unlimited)))
+		b.WriteString(dimStyle.Render(fmt.Sprintf("  Credits: %s (unlimited: %v)", bal, u.Credits.Unlimited)))
 		b.WriteByte('\n')
 	}
 
 	b.WriteByte('\n')
-	b.WriteString(m.footer())
+	return b.String()
+}
+
+func (m Model) orSection() string {
+	var b strings.Builder
+	b.WriteString(sectionStyle.Render(" OpenRouter"))
+	b.WriteByte('\n')
+
+	if m.orUsage == nil && m.orErr == "" {
+		b.WriteString(dimStyle.Render("  Loading..."))
+		b.WriteByte('\n')
+		return b.String()
+	}
+
+	if m.orErr != "" {
+		c := yellow
+		if m.orUsage == nil {
+			c = red
+		}
+		b.WriteString(pctStyle(c).Render(fmt.Sprintf("  ⚠️  %s (retry %d/%d)", m.orErr, m.orRetries, maxRetries)))
+		b.WriteByte('\n')
+		if m.orUsage == nil {
+			return b.String()
+		}
+	}
+
+	u := m.orUsage
+	bw := m.barWidth()
+
+	b.WriteString(dimStyle.Render(fmt.Sprintf("  Key: %s", u.Key.Label)))
+	b.WriteByte('\n')
+	b.WriteByte('\n')
+
+	if u.Key.Limit > 0 {
+		usedPct := (u.Key.Limit - u.Key.LimitRemaining) / u.Key.Limit * 100
+		b.WriteString(renderBar("Credit Limit", usedPct, bw,
+			fmt.Sprintf("$%.4f remaining (resets %s)", u.Key.LimitRemaining, u.Key.LimitReset),
+		))
+		b.WriteByte('\n')
+	}
+
+	b.WriteString(dimStyle.Render(fmt.Sprintf("  Usage — Daily: $%.4f | Weekly: $%.4f | Monthly: $%.4f",
+		u.Key.UsageDaily, u.Key.UsageWeekly, u.Key.UsageMonthly)))
+	b.WriteByte('\n')
+
+	if u.Credits != nil {
+		b.WriteString(dimStyle.Render(fmt.Sprintf("  Credits — Total: $%.4f | Used: $%.4f | Remaining: $%.4f",
+			u.Credits.Total, u.Credits.Used, u.Credits.Remaining)))
+		b.WriteByte('\n')
+	}
+
+	b.WriteByte('\n')
 	return b.String()
 }
 
@@ -170,8 +288,7 @@ func (m Model) footer() string {
 		ts = "..."
 	}
 	info := fmt.Sprintf(" refresh: %ds | updated: %s | q to quit", int(refreshInterval.Seconds()), ts)
-	foot := dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", m.width))
-	return foot
+	return dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", m.width))
 }
 
 func renderBar(label string, usedPercent float64, barWidth int, resetInfo string) string {
@@ -187,20 +304,27 @@ func renderBar(label string, usedPercent float64, barWidth int, resetInfo string
 	empty := barEmptyStyle.Render(strings.Repeat(" ", emptyCount))
 
 	var b strings.Builder
-	b.WriteString(" " + labelStyle.Render(label) + "\n")
-	b.WriteString(fmt.Sprintf("  Used:%s  %s%s  %s\n",
+	b.WriteString("  " + labelStyle.Render(label) + "\n")
+	b.WriteString(fmt.Sprintf("   Used:%s  %s%s  %s\n",
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%%", used)),
 		filled, empty,
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%% free", remaining)),
 	))
-	b.WriteString("  " + dimStyle.Render(resetInfo) + "\n")
+	b.WriteString("   " + dimStyle.Render(resetInfo) + "\n")
 	return b.String()
 }
 
-func fetchUsage(auth *codex.Auth) tea.Cmd {
+func fetchCodexUsage(auth *codex.Auth) tea.Cmd {
 	return func() tea.Msg {
 		usage, err := codex.FetchUsage(auth)
-		return usageMsg{usage: usage, err: err}
+		return codexUsageMsg{usage: usage, err: err}
+	}
+}
+
+func fetchORUsage(auth *openrouter.Auth) tea.Cmd {
+	return func() tea.Msg {
+		usage, err := openrouter.FetchUsage(auth)
+		return orUsageMsg{usage: usage, err: err}
 	}
 }
 

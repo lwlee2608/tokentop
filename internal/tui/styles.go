@@ -11,9 +11,10 @@ var (
 	white  = lipgloss.Color("15")
 	gray   = lipgloss.Color("237")
 
-	headerStyle = lipgloss.NewStyle().Bold(true).Foreground(white)
-	dimStyle    = lipgloss.NewStyle().Faint(true)
-	labelStyle  = lipgloss.NewStyle().Bold(true).Foreground(white)
+	headerStyle  = lipgloss.NewStyle().Bold(true).Foreground(white)
+	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(white).Underline(true)
+	dimStyle     = lipgloss.NewStyle().Faint(true)
+	labelStyle   = lipgloss.NewStyle().Bold(true).Foreground(white)
 )
 
 func barFilledStyle(c lipgloss.Color) lipgloss.Style {
