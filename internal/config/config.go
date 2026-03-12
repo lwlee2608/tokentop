@@ -1,6 +1,7 @@
 package config
 
 import (
+	_ "embed"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,13 +36,18 @@ func Load() (*Config, error) {
 	a.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	a.AutomaticEnv()
 
-	cfg := defaultConfig()
+	cfg := &Config{}
 
 	if err := a.ReadInConfig(); err != nil {
 		if strings.HasPrefix(err.Error(), "config file not found") {
-			return cfg, nil
+			writeDefaultConfig(filepath.Join(home, ".config", "tokentop", "config.yaml"))
+			// Retry after writing the default config
+			if err := a.ReadInConfig(); err != nil {
+				return cfg, nil
+			}
+		} else {
+			return nil, err
 		}
-		return nil, err
 	}
 
 	if err := a.Unmarshal(cfg); err != nil {
@@ -50,10 +56,12 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-func defaultConfig() *Config {
-	return &Config{
-		Providers: ProvidersConfig{
-			Codex: ProviderConfig{Enabled: true},
-		},
+//go:embed default_config.yaml
+var defaultConfigYAML []byte
+
+func writeDefaultConfig(path string) {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return
 	}
+	_ = os.WriteFile(path, defaultConfigYAML, 0644)
 }

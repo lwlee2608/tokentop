@@ -4,4 +4,4 @@ providers:
   openrouter:
     enabled: true
   anthropic:
-    enabled: false # not yet implemented
+    enabled: false
