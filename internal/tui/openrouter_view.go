@@ -137,21 +137,76 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 		return ""
 	}
 
-	// Build stacked columns: each day is a column of colored blocks
+	// Pre-compute each column as an array of color indices (bottom to top)
 	const (
 		colWidth   = 2
 		gutterPad  = "         " // 9 spaces, left of the axis line
 		gutter     = "  %5.0f │"
 		gutterBlnk = gutterPad + "│"
+		emptyCell  = -1
 	)
 	height := chartMaxHeight
+
+	// columns[dayIdx][row] = color index, where row 0 = bottom
+	columns := make([][]int, len(days))
+	for di, day := range days {
+		col := make([]int, height)
+		for r := range col {
+			col[r] = emptyCell
+		}
+		totalCells := int(math.Round(day.Total / maxTotal * float64(height)))
+		if day.Total > 0 && totalCells == 0 {
+			totalCells = 1
+		}
+
+		// Gather spend per top model + others, in stacking order
+		spendByModel := make(map[string]float64)
+		var othersSpend float64
+		for _, model := range day.Models {
+			if topSet[model.Model] {
+				spendByModel[model.Model] += model.Spend
+			} else {
+				othersSpend += model.Spend
+			}
+		}
+
+		// Fill cells bottom-up: each model gets cells proportional to its spend
+		cellIdx := 0
+		for i, name := range topModels {
+			spend := spendByModel[name]
+			if spend <= 0 {
+				continue
+			}
+			cells := int(math.Round(spend / maxTotal * float64(height)))
+			if cells == 0 {
+				cells = 1
+			}
+			for c := 0; c < cells && cellIdx < totalCells && cellIdx < height; c++ {
+				col[cellIdx] = i
+				cellIdx++
+			}
+		}
+		// Others fill remaining cells
+		othersColor := len(topModels) % len(modelBarColors)
+		if othersSpend > 0 {
+			cells := int(math.Round(othersSpend / maxTotal * float64(height)))
+			if cells == 0 {
+				cells = 1
+			}
+			for c := 0; c < cells && cellIdx < totalCells && cellIdx < height; c++ {
+				col[cellIdx] = othersColor
+				cellIdx++
+			}
+		}
+		columns[di] = col
+	}
+
 	var b strings.Builder
 	b.WriteByte('\n')
 	b.WriteString("  " + labelStyle.Render("Daily Spend") + "\n")
 
-	// Y-axis labels + chart rows (top to bottom)
+	// Render rows top to bottom
 	for row := height; row >= 1; row-- {
-		threshold := maxTotal * float64(row) / float64(height)
 		switch row {
 		case height:
 			b.WriteString(dimStyle.Render(fmt.Sprintf(gutter, maxTotal)))
@@ -163,10 +218,10 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 			b.WriteString(dimStyle.Render(gutterBlnk))
 		}
 
-		for _, day := range days {
-			if day.Total >= threshold {
-				colorIdx := segmentColor(day, threshold, maxTotal, float64(height), topModels, topSet)
-				b.WriteString(modelBarFilledStyle(colorIdx).Render("▐█"))
+		cellRow := row - 1 // row 1 = index 0 (bottom)
+		for _, col := range columns {
+			if col[cellRow] != emptyCell {
+				b.WriteString(modelBarFilledStyle(col[cellRow]).Render("▐█"))
 			} else {
 				b.WriteString("  ")
 			}
@@ -219,38 +274,6 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 	b.WriteByte('\n')
 
 	return b.String()
-}
-
-func segmentColor(day openrouter.DailyUsage, threshold, maxTotal, height float64, topModels []string, topSet map[string]bool) int {
-	// Walk up the stacked bar to find which model occupies this row
-	cumulative := 0.0
-	segmentSize := maxTotal / height
-
-	// Group spend by category (top models + others)
-	spendByModel := make(map[string]float64)
-	var othersSpend float64
-	for _, model := range day.Models {
-		if topSet[model.Model] {
-			spendByModel[model.Model] += model.Spend
-		} else {
-			othersSpend += model.Spend
-		}
-	}
-
-	// Stack in order: top models first, then others
-	for i, name := range topModels {
-		spend := spendByModel[name]
-		cumulative += spend
-		if cumulative >= threshold-segmentSize*0.5 {
-			return i
-		}
-	}
-	cumulative += othersSpend
-	if cumulative >= threshold-segmentSize*0.5 {
-		return len(topModels) % len(modelBarColors)
-	}
-
-	return 0
 }
 
 func topNModels(modelSpend map[string]float64, n int) []string {
