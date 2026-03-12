@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/lwlee2608/tokentop/pkg/openrouter"
@@ -63,6 +64,7 @@ func (m Model) orSection() string {
 
 	if u.Key.IsManagementKey {
 		b.WriteString(renderORSummary(u))
+		b.WriteString(m.renderORDailyChart(u))
 		b.WriteString(m.renderORModels(u))
 		b.WriteString(renderORKeys(u))
 	}
@@ -93,6 +95,193 @@ func renderORSummary(u *openrouter.Usage) string {
 	b.WriteString(dimStyle.Render("  " + strings.Join(parts, " | ")))
 	b.WriteByte('\n')
 	return b.String()
+}
+
+const (
+	chartMaxHeight = 10
+	chartMaxDays   = 30
+	chartTopModels = 6
+)
+
+func (m Model) renderORDailyChart(u *openrouter.Usage) string {
+	if u.DailyActivity == nil || len(u.DailyActivity.Days) == 0 {
+		return ""
+	}
+
+	days := u.DailyActivity.Days
+	if len(days) > chartMaxDays {
+		days = days[len(days)-chartMaxDays:]
+	}
+
+	// Find top models across all days by total spend
+	modelSpend := make(map[string]float64)
+	for _, day := range days {
+		for _, model := range day.Models {
+			modelSpend[model.Model] += model.Spend
+		}
+	}
+	topModels := topNModels(modelSpend, chartTopModels)
+	topSet := make(map[string]bool, len(topModels))
+	for _, m := range topModels {
+		topSet[m] = true
+	}
+
+	// Find max daily total for scaling
+	var maxTotal float64
+	for _, day := range days {
+		if day.Total > maxTotal {
+			maxTotal = day.Total
+		}
+	}
+	if maxTotal == 0 {
+		return ""
+	}
+
+	// Build stacked columns: each day is a column of colored blocks
+	height := chartMaxHeight
+	var b strings.Builder
+	b.WriteByte('\n')
+	b.WriteString("  " + labelStyle.Render("Daily Spend") + "\n")
+
+	// Y-axis labels + chart rows (top to bottom)
+	for row := height; row >= 1; row-- {
+		threshold := maxTotal * float64(row) / float64(height)
+		if row == height {
+			b.WriteString(dimStyle.Render(fmt.Sprintf("  $%5.0f │", maxTotal)))
+		} else if row == height/2 {
+			b.WriteString(dimStyle.Render(fmt.Sprintf("  $%5.0f │", maxTotal/2)))
+		} else if row == 1 {
+			b.WriteString(dimStyle.Render(fmt.Sprintf("  $%5.0f │", maxTotal/float64(height))))
+		} else {
+			b.WriteString(dimStyle.Render("        │"))
+		}
+
+		for _, day := range days {
+			if day.Total >= threshold {
+				// Determine which model "owns" this segment
+				colorIdx := segmentColor(day, threshold, maxTotal, float64(height), topModels, topSet)
+				b.WriteString(modelBarFilledStyle(colorIdx).Render("▐█"))
+			} else {
+				b.WriteString("  ")
+			}
+		}
+		b.WriteByte('\n')
+	}
+
+	// X-axis
+	b.WriteString(dimStyle.Render("        └" + strings.Repeat("──", len(days))))
+	b.WriteByte('\n')
+
+	// Date labels (show first, middle, last)
+	if len(days) > 0 {
+		dateLineWidth := 2 * len(days)
+		dateLine := make([]byte, dateLineWidth)
+		for i := range dateLine {
+			dateLine[i] = ' '
+		}
+		labels := []int{0}
+		if len(days) > 2 {
+			labels = append(labels, len(days)/2)
+		}
+		if len(days) > 1 {
+			labels = append(labels, len(days)-1)
+		}
+		b.WriteString("         ")
+		for i, day := range days {
+			isLabel := false
+			for _, li := range labels {
+				if i == li {
+					isLabel = true
+					break
+				}
+			}
+			if isLabel {
+				lbl := day.Date[5:] // "MM-DD"
+				b.WriteString(dimStyle.Render(lbl))
+				// Pad to maintain alignment
+				remaining := 2 - len(lbl)
+				if remaining > 0 {
+					b.WriteString(strings.Repeat(" ", remaining))
+				}
+			} else {
+				b.WriteString("  ")
+			}
+		}
+		b.WriteByte('\n')
+	}
+
+	// Legend
+	b.WriteString("  ")
+	for i, model := range topModels {
+		shortName := truncate(modelShortName(model), 14)
+		b.WriteString(modelBarFilledStyle(i).Render("█") + " " + dimStyle.Render(shortName) + "  ")
+	}
+	b.WriteByte('\n')
+
+	return b.String()
+}
+
+func segmentColor(day openrouter.DailyUsage, threshold, maxTotal, height float64, topModels []string, topSet map[string]bool) int {
+	// Walk up the stacked bar to find which model occupies this row
+	cumulative := 0.0
+	segmentSize := maxTotal / height
+
+	// Group spend by category (top models + others)
+	spendByModel := make(map[string]float64)
+	var othersSpend float64
+	for _, model := range day.Models {
+		if topSet[model.Model] {
+			spendByModel[model.Model] += model.Spend
+		} else {
+			othersSpend += model.Spend
+		}
+	}
+
+	// Stack in order: top models first, then others
+	for i, name := range topModels {
+		spend := spendByModel[name]
+		cumulative += spend
+		if cumulative >= threshold-segmentSize*0.5 {
+			return i
+		}
+	}
+	cumulative += othersSpend
+	if cumulative >= threshold-segmentSize*0.5 {
+		return len(topModels) % len(modelBarColors)
+	}
+
+	return 0
+}
+
+func topNModels(modelSpend map[string]float64, n int) []string {
+	type ms struct {
+		model string
+		spend float64
+	}
+	all := make([]ms, 0, len(modelSpend))
+	for m, s := range modelSpend {
+		all = append(all, ms{m, s})
+	}
+	for i := 0; i < len(all); i++ {
+		for j := i + 1; j < len(all); j++ {
+			if all[j].spend > all[i].spend {
+				all[i], all[j] = all[j], all[i]
+			}
+		}
+	}
+	result := make([]string, 0, int(math.Min(float64(n), float64(len(all)))))
+	for i := 0; i < len(all) && i < n; i++ {
+		result = append(result, all[i].model)
+	}
+	return result
+}
+
+func modelShortName(model string) string {
+	// "anthropic/claude-opus-4.6" -> "claude-opus-4.6"
+	if idx := strings.LastIndex(model, "/"); idx >= 0 {
+		return model[idx+1:]
+	}
+	return model
 }
 
 func (m Model) renderORModels(u *openrouter.Usage) string {

@@ -12,10 +12,11 @@ import (
 var baseURL = "https://openrouter.ai/api/v1"
 
 type Usage struct {
-	Key      KeyUsage
-	Credits  *Credits
-	Activity *Activity
-	APIKeys  []APIKey
+	Key           KeyUsage
+	Credits       *Credits
+	Activity      *Activity
+	DailyActivity *DailyActivity
+	APIKeys       []APIKey
 }
 
 type KeyUsage struct {
@@ -171,6 +172,7 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 		Remaining: credits.Data.TotalCredits - credits.Data.TotalUsage,
 	}
 	usage.Activity = buildActivity(activity.Data)
+	usage.DailyActivity = buildDailyActivity(activity.Data)
 	for _, k := range keys.Data {
 		usage.APIKeys = append(usage.APIKeys, APIKey{
 			Name:         k.Name,

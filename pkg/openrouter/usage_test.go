@@ -1,6 +1,7 @@
 package openrouter
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -45,6 +46,26 @@ func TestFetchUsageLive(t *testing.T) {
 				k.Name, k.Label, k.Usage, k.UsageDaily, k.UsageWeekly, k.UsageMonthly)
 		}
 	}
+}
+
+func TestActivityResponseUnmarshal(t *testing.T) {
+	raw := `{"data":[
+		{"date":"2026-03-10","model":"anthropic/claude-opus-4.6","usage":5.12,"byok_usage_inference":0,"requests":10,"prompt_tokens":1000,"completion_tokens":500,"reasoning_tokens":0},
+		{"date":"2026-03-11","model":"openai/gpt-5.1","usage":3.45,"byok_usage_inference":0.5,"requests":5,"prompt_tokens":800,"completion_tokens":400,"reasoning_tokens":100}
+	]}`
+
+	var resp activityResponse
+	require.NoError(t, json.Unmarshal([]byte(raw), &resp))
+	require.Len(t, resp.Data, 2)
+
+	assert.Equal(t, "2026-03-10", resp.Data[0].Date)
+	assert.Equal(t, "anthropic/claude-opus-4.6", resp.Data[0].Model)
+	assert.InDelta(t, 5.12, resp.Data[0].Usage, 0.001)
+
+	assert.Equal(t, "2026-03-11", resp.Data[1].Date)
+	assert.Equal(t, "openai/gpt-5.1", resp.Data[1].Model)
+	assert.InDelta(t, 0.5, resp.Data[1].BYOKUsageInference, 0.001)
+	assert.InDelta(t, 100.0, resp.Data[1].ReasoningTokens, 0.001)
 }
 
 func TestBuildDailyActivity(t *testing.T) {
