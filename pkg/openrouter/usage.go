@@ -12,10 +12,11 @@ import (
 var baseURL = "https://openrouter.ai/api/v1"
 
 type Usage struct {
-	Key      KeyUsage
-	Credits  *Credits
-	Activity *Activity
-	APIKeys  []APIKey
+	Key           KeyUsage
+	Credits       *Credits
+	Activity      *Activity
+	DailyActivity *DailyActivity
+	APIKeys       []APIKey
 }
 
 type KeyUsage struct {
@@ -117,6 +118,7 @@ type activityResponse struct {
 }
 
 type activityItem struct {
+	Date               string  `json:"date"`
 	Model              string  `json:"model"`
 	Usage              float64 `json:"usage"`
 	BYOKUsageInference float64 `json:"byok_usage_inference"`
@@ -124,6 +126,16 @@ type activityItem struct {
 	PromptTokens       float64 `json:"prompt_tokens"`
 	CompletionTokens   float64 `json:"completion_tokens"`
 	ReasoningTokens    float64 `json:"reasoning_tokens"`
+}
+
+type DailyUsage struct {
+	Date   string
+	Models []ModelUsage
+	Total  float64
+}
+
+type DailyActivity struct {
+	Days []DailyUsage
 }
 
 func FetchUsage(auth *Auth) (*Usage, error) {
@@ -160,6 +172,7 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 		Remaining: credits.Data.TotalCredits - credits.Data.TotalUsage,
 	}
 	usage.Activity = buildActivity(activity.Data)
+	usage.DailyActivity = buildDailyActivity(activity.Data)
 	for _, k := range keys.Data {
 		usage.APIKeys = append(usage.APIKeys, APIKey{
 			Name:         k.Name,
@@ -170,6 +183,9 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 			UsageMonthly: k.UsageMonthly,
 		})
 	}
+	sort.Slice(usage.APIKeys, func(i, j int) bool {
+		return usage.APIKeys[i].UsageMonthly > usage.APIKeys[j].UsageMonthly
+	})
 
 	return usage, nil
 }
@@ -232,6 +248,50 @@ func buildActivity(items []activityItem) *Activity {
 	})
 
 	return activity
+}
+
+func buildDailyActivity(items []activityItem) *DailyActivity {
+	type key struct{ date, model string }
+	agg := make(map[key]*ModelUsage)
+	dates := make(map[string]bool)
+
+	for _, item := range items {
+		dates[item.Date] = true
+		k := key{item.Date, item.Model}
+		m := agg[k]
+		if m == nil {
+			m = &ModelUsage{Model: item.Model}
+			agg[k] = m
+		}
+		m.Spend += item.Usage
+		m.Requests += item.Requests
+		m.PromptTokens += item.PromptTokens
+		m.CompletionTokens += item.CompletionTokens
+		m.ReasoningTokens += item.ReasoningTokens
+	}
+
+	sortedDates := make([]string, 0, len(dates))
+	for d := range dates {
+		sortedDates = append(sortedDates, d)
+	}
+	sort.Strings(sortedDates)
+
+	daily := &DailyActivity{}
+	for _, date := range sortedDates {
+		day := DailyUsage{Date: date}
+		for k, m := range agg {
+			if k.date == date {
+				day.Models = append(day.Models, *m)
+				day.Total += m.Spend
+			}
+		}
+		sort.Slice(day.Models, func(i, j int) bool {
+			return day.Models[i].Spend > day.Models[j].Spend
+		})
+		daily.Days = append(daily.Days, day)
+	}
+
+	return daily
 }
 
 func fetchKeys(client *http.Client, auth *Auth) (*keysResponse, error) {
