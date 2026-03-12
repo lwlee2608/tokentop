@@ -183,6 +183,9 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 			UsageMonthly: k.UsageMonthly,
 		})
 	}
+	sort.Slice(usage.APIKeys, func(i, j int) bool {
+		return usage.APIKeys[i].UsageMonthly > usage.APIKeys[j].UsageMonthly
+	})
 
 	return usage, nil
 }
