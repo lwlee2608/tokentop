@@ -39,16 +39,6 @@ func (m Model) orSection() string {
 	u := m.orUsage
 	bw := m.barWidth()
 
-	keyLabel := u.Key.Label
-	switch {
-	case u.Key.IsFreeTier:
-		keyLabel += " (free tier)"
-	case u.Key.IsManagementKey:
-		keyLabel += " (management)"
-	}
-	b.WriteString(dimStyle.Render(fmt.Sprintf("  Key: %s", keyLabel)))
-	b.WriteByte('\n')
-
 	if u.Key.Limit > 0 {
 		b.WriteByte('\n')
 		usedPct := (u.Key.Limit - u.Key.LimitRemaining) / u.Key.Limit * 100

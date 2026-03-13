@@ -131,6 +131,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			slog.Error("openrouter usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
 		} else {
+			if m.orUsage == nil {
+				keyType := "standard"
+				if msg.usage.Key.IsFreeTier {
+					keyType = "free tier"
+				} else if msg.usage.Key.IsManagementKey {
+					keyType = "management"
+				}
+				slog.Info("openrouter key info", "label", msg.usage.Key.Label, "type", keyType)
+			}
 			m.orUsage = msg.usage
 			m.orErr = ""
 			m.orRetries = 0

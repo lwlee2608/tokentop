@@ -7,7 +7,7 @@ import (
 )
 
 type Auth struct {
-	APIKey string
+	APIKey string `mask:"first=3,last=4"`
 }
 
 func LoadAuth() (*Auth, error) {

@@ -76,7 +76,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Warning: openrouter: %v\n", err)
 		} else {
 			orAuth = auth
-			slog.Info("openrouter provider enabled")
+			masked, _ := adder.PrettyJSON(orAuth)
+			slog.Info("openrouter provider enabled", "auth", masked)
 		}
 	}
 
