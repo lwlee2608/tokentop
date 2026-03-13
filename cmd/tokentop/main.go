@@ -7,6 +7,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lwlee2608/adder"
 	"github.com/lwlee2608/tokentop/internal/config"
 	"github.com/lwlee2608/tokentop/internal/tui"
 	"github.com/lwlee2608/tokentop/pkg/codex"
@@ -46,6 +47,13 @@ func main() {
 	case *allProviders:
 		cfg.Providers.Codex.Enabled = true
 		cfg.Providers.OpenRouter.Enabled = true
+	}
+
+	if parseLogLevel(cfg.Log.Level) == slog.LevelDebug {
+		configJSON, err := adder.PrettyJSON(cfg)
+		if err == nil {
+			slog.Debug("config loaded", "config", configJSON)
+		}
 	}
 
 	var codexAuth *codex.Auth
