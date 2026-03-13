@@ -105,7 +105,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			slog.Warn("codex usage refresh failed", "error", msg.err, "retry", m.codexRetries, "max_retries", maxRetries)
 			if m.codexRetries < maxRetries {
 				m.codexRetries++
-				slog.Info("scheduling codex usage retry", "retry", m.codexRetries, "delay", retryDelay.String())
+				slog.Debug("scheduling codex usage retry", "retry", m.codexRetries, "delay", retryDelay.String())
 				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return codexRetryMsg{} })
 			}
 			slog.Error("codex usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
@@ -123,7 +123,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			slog.Warn("openrouter usage refresh failed", "error", msg.err, "retry", m.orRetries, "max_retries", maxRetries)
 			if m.orRetries < maxRetries {
 				m.orRetries++
-				slog.Info("scheduling openrouter usage retry", "retry", m.orRetries, "delay", retryDelay.String())
+				slog.Debug("scheduling openrouter usage retry", "retry", m.orRetries, "delay", retryDelay.String())
 				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return orRetryMsg{} })
 			}
 			slog.Error("openrouter usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
