@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -14,10 +15,27 @@ import (
 var AppVersion = "dev"
 
 func main() {
+	onlyCodex := flag.Bool("codex", false, "start with only Codex provider")
+	onlyOpenRouter := flag.Bool("openrouter", false, "start with only OpenRouter provider")
+	allProviders := flag.Bool("all", false, "start with all providers enabled")
+	flag.Parse()
+
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	switch {
+	case *onlyCodex:
+		cfg.Providers.Codex.Enabled = true
+		cfg.Providers.OpenRouter.Enabled = false
+	case *onlyOpenRouter:
+		cfg.Providers.Codex.Enabled = false
+		cfg.Providers.OpenRouter.Enabled = true
+	case *allProviders:
+		cfg.Providers.Codex.Enabled = true
+		cfg.Providers.OpenRouter.Enabled = true
 	}
 
 	var codexAuth *codex.Auth
