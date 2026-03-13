@@ -88,7 +88,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(tui.New(codexAuth, orAuth, AppVersion), tea.WithAltScreen())
+	p := tea.NewProgram(tui.New(codexAuth, orAuth, cfg.OpenRouterUI, AppVersion), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		slog.Error("tui exited with error", "error", err)
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

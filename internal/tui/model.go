@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lwlee2608/tokentop/internal/config"
 	"github.com/lwlee2608/tokentop/pkg/codex"
 	"github.com/lwlee2608/tokentop/pkg/openrouter"
 )
@@ -35,9 +36,10 @@ type orUsageMsg struct {
 type orRetryMsg struct{}
 
 type Model struct {
-	version   string
-	width     int
-	lastFetch time.Time
+	version      string
+	width        int
+	lastFetch    time.Time
+	orUIConfig   config.OpenRouterUIConfig
 
 	codexAuth    *codex.Auth
 	codexUsage   *codex.Usage
@@ -50,11 +52,12 @@ type Model struct {
 	orRetries int
 }
 
-func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, version string) Model {
+func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, orUIConfig config.OpenRouterUIConfig, version string) Model {
 	return Model{
-		codexAuth: codexAuth,
-		orAuth:    orAuth,
-		version:   version,
+		codexAuth:  codexAuth,
+		orAuth:     orAuth,
+		orUIConfig: orUIConfig,
+		version:    version,
 	}
 }
 

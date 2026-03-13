@@ -65,10 +65,18 @@ func (m Model) orSection() string {
 	}
 
 	if u.Key.IsManagementKey {
-		b.WriteString(renderORSummary(u))
-		b.WriteString(m.renderORDailyChart(u))
-		b.WriteString(m.renderORModels(u))
-		b.WriteString(renderORKeys(u))
+		if m.orUIConfig.Summary {
+			b.WriteString(renderORSummary(u))
+		}
+		if m.orUIConfig.DailySpend {
+			b.WriteString(m.renderORDailyChart(u))
+		}
+		if m.orUIConfig.TopModels {
+			b.WriteString(m.renderORModels(u))
+		}
+		if m.orUIConfig.APIKeys {
+			b.WriteString(renderORKeys(u))
+		}
 	}
 
 	b.WriteByte('\n')
@@ -88,7 +96,7 @@ func renderORSummary(u *openrouter.Usage) string {
 	if u.Activity != nil {
 		t := u.Activity.Totals
 		parts = append(parts, fmt.Sprintf("Spend $%.2f | %.0f req", t.Spend, t.Requests))
-		tokens := fmt.Sprintf("in %s/out %s", formatTokens(t.PromptTokens), formatTokens(t.CompletionTokens))
+		tokens := fmt.Sprintf("%s/%s (in/out)", formatTokens(t.PromptTokens), formatTokens(t.CompletionTokens))
 		if t.ReasoningTokens > 0 {
 			tokens += fmt.Sprintf(" +%s reason", formatTokens(t.ReasoningTokens))
 		}

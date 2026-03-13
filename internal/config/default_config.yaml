@@ -9,3 +9,9 @@ providers:
     enabled: true
   anthropic:
     enabled: false
+
+openrouter_ui:
+  summary: true
+  daily_spend: true
+  top_models: true
+  api_keys: false

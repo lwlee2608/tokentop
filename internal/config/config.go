@@ -10,8 +10,9 @@ import (
 )
 
 type Config struct {
-	Log       LogConfig       `mapstructure:"log"`
-	Providers ProvidersConfig `mapstructure:"providers"`
+	Log          LogConfig        `mapstructure:"log"`
+	Providers    ProvidersConfig  `mapstructure:"providers"`
+	OpenRouterUI OpenRouterUIConfig `mapstructure:"openrouter_ui"`
 }
 
 type LogConfig struct {
@@ -29,6 +30,13 @@ type ProviderConfig struct {
 	Enabled bool `mapstructure:"enabled"`
 }
 
+type OpenRouterUIConfig struct {
+	Summary    bool `mapstructure:"summary"`
+	DailySpend bool `mapstructure:"daily_spend"`
+	TopModels  bool `mapstructure:"top_models"`
+	APIKeys    bool `mapstructure:"api_keys"`
+}
+
 func Load() (*Config, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -42,7 +50,14 @@ func Load() (*Config, error) {
 	a.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	a.AutomaticEnv()
 
-	cfg := &Config{}
+	cfg := &Config{
+		OpenRouterUI: OpenRouterUIConfig{
+			Summary:    true,
+			DailySpend: true,
+			TopModels:  true,
+			APIKeys:    true,
+		},
+	}
 
 	if err := a.ReadInConfig(); err != nil {
 		if strings.HasPrefix(err.Error(), "config file not found") {
