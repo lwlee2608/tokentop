@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -81,6 +82,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		m.codexRetries = 0
 		m.orRetries = 0
+		slog.Debug("starting usage refresh")
 		var cmds []tea.Cmd
 		if m.codexAuth != nil {
 			cmds = append(cmds, fetchCodexUsage(m.codexAuth))
@@ -100,29 +102,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case codexUsageMsg:
 		if msg.err != nil {
 			m.codexErr = msg.err.Error()
+			slog.Warn("codex usage refresh failed", "error", msg.err, "retry", m.codexRetries, "max_retries", maxRetries)
 			if m.codexRetries < maxRetries {
 				m.codexRetries++
+				slog.Info("scheduling codex usage retry", "retry", m.codexRetries, "delay", retryDelay.String())
 				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return codexRetryMsg{} })
 			}
+			slog.Error("codex usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
 		} else {
 			m.codexUsage = msg.usage
 			m.codexErr = ""
 			m.codexRetries = 0
 			m.lastFetch = time.Now()
+			slog.Debug("codex usage refresh succeeded")
 		}
 
 	case orUsageMsg:
 		if msg.err != nil {
 			m.orErr = msg.err.Error()
+			slog.Warn("openrouter usage refresh failed", "error", msg.err, "retry", m.orRetries, "max_retries", maxRetries)
 			if m.orRetries < maxRetries {
 				m.orRetries++
+				slog.Info("scheduling openrouter usage retry", "retry", m.orRetries, "delay", retryDelay.String())
 				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return orRetryMsg{} })
 			}
+			slog.Error("openrouter usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
 		} else {
 			m.orUsage = msg.usage
 			m.orErr = ""
 			m.orRetries = 0
 			m.lastFetch = time.Now()
+			slog.Debug("openrouter usage refresh succeeded")
 		}
 	}
 	return m, nil
@@ -227,7 +237,6 @@ func (m Model) codexSection() string {
 	b.WriteByte('\n')
 	return b.String()
 }
-
 
 func (m Model) footer() string {
 	var ts string

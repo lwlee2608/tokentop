@@ -10,7 +10,13 @@ import (
 )
 
 type Config struct {
+	Log       LogConfig       `mapstructure:"log"`
 	Providers ProvidersConfig `mapstructure:"providers"`
+}
+
+type LogConfig struct {
+	Level string `mapstructure:"level"`
+	Path  string `mapstructure:"path"`
 }
 
 type ProvidersConfig struct {

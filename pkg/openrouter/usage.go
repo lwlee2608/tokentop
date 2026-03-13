@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"sort"
 	"time"
@@ -329,8 +330,12 @@ func fetchActivity(client *http.Client, auth *Auth) (*activityResponse, error) {
 }
 
 func doJSON(client *http.Client, auth *Auth, method, url string, target any) error {
+	logger := slog.With("provider", "openrouter", "method", method, "url", url)
+	started := time.Now()
+
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
+		logger.Error("build request failed", "error", err)
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+auth.APIKey)
@@ -338,22 +343,28 @@ func doJSON(client *http.Client, auth *Auth, method, url string, target any) err
 
 	resp, err := client.Do(req)
 	if err != nil {
+		logger.Warn("request failed", "error", err, "duration_ms", time.Since(started).Milliseconds())
 		return err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logger.Warn("read response failed", "error", err, "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
 		return fmt.Errorf("read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
 		return fmt.Errorf("OpenRouter API %s returned status %d: %s", url, resp.StatusCode, string(body))
 	}
 
 	if err := json.Unmarshal(body, target); err != nil {
+		logger.Warn("parse response failed", "error", err, "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
 		return fmt.Errorf("parse response: %w", err)
 	}
+
+	logger.Debug("request completed", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
 
 	return nil
 }

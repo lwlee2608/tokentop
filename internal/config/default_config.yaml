@@ -1,3 +1,7 @@
+log:
+  level: info
+  path: ""
+
 providers:
   codex:
     enabled: true
