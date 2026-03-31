@@ -269,7 +269,7 @@ func renderBar(label string, usedPercent float64, barWidth int, resetInfo string
 	return b.String()
 }
 
-const compactResetWidth = 12 // fixed width for reset info, e.g. "in 164h 58m"
+const compactResetWidth = 8 // fixed width for reset info, e.g. "in 164h 58m"
 
 func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo string) string {
 	used := math.Min(usedPercent, 100)
@@ -322,7 +322,7 @@ func timeUntil(t time.Time) string {
 	h := int(d.Hours())
 	m := int(d.Minutes()) % 60
 	if h > 0 {
-		return fmt.Sprintf("in %dh %dm", h, m)
+		return fmt.Sprintf("%dh %dm", h, m)
 	}
-	return fmt.Sprintf("in %dm", m)
+	return fmt.Sprintf("%dm", m)
 }
