@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	refreshInterval = 30 * time.Second
+	refreshInterval = 5 * time.Minute
 	retryDelay      = 5 * time.Second
 	maxRetries      = 3
 )
@@ -44,9 +44,9 @@ type claudeUsageMsg struct {
 type claudeRetryMsg struct{}
 
 type Model struct {
-	version      string
-	width        int
-	lastFetch    time.Time
+	version       string
+	width         int
+	lastFetch     time.Time
 	codexUIConfig config.CodexUIConfig
 	orUIConfig    config.OpenRouterUIConfig
 
@@ -219,15 +219,14 @@ func (m Model) View() string {
 	b.WriteString(headerStyle.Render(title))
 	b.WriteByte('\n')
 
+	if m.claudeAuth != nil {
+		b.WriteString(m.claudeSection())
+	}
 	if m.codexAuth != nil {
 		b.WriteString(m.codexSection())
 	}
 	if m.orAuth != nil {
 		b.WriteString(m.orSection())
-	}
-
-	if m.claudeAuth != nil {
-		b.WriteString(m.claudeSection())
 	}
 
 	b.WriteString(m.footer())
