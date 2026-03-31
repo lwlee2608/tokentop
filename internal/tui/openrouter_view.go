@@ -358,12 +358,12 @@ func (m Model) renderORModels(u *openrouter.Usage) string {
 	barWidth := m.modelBarWidth()
 	for i, model := range models {
 		label := truncate(modelShortName(model.Model), 22)
-		b.WriteString(fmt.Sprintf("  %s  %s  %s  %s\n",
+		fmt.Fprintf(&b, "  %s  %s  %s  %s\n",
 			dimStyle.Render(fmt.Sprintf("%-22s", label)),
 			dimStyle.Render(fmt.Sprintf("$%7.2f", model.Spend)),
 			renderModelBar(model.Spend, maxSpend, barWidth, i),
 			dimStyle.Render(fmt.Sprintf("%4.0f req", model.Requests)),
-		))
+		)
 	}
 	return b.String()
 }
@@ -380,9 +380,7 @@ func (m Model) modelBarWidth() int {
 }
 
 func renderModelBar(spend, maxSpend float64, width int, colorIndex int) string {
-	if width < 1 {
-		width = 1
-	}
+	width = max(width, 1)
 	filled := width
 	if maxSpend > 0 {
 		filled = int(spend / maxSpend * float64(width))

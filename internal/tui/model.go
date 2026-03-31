@@ -198,9 +198,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) barWidth() int {
 	w := m.width - barPadding
-	if w < 10 {
-		w = 10
-	}
+	w = max(w, 10)
 	return w
 }
 
@@ -210,13 +208,9 @@ func (m Model) View() string {
 	// Header
 	label := fmt.Sprintf(" tokentop %s ", m.version)
 	sideLen := (m.width - len(label) - 2) / 2
-	if sideLen < 0 {
-		sideLen = 0
-	}
+	sideLen = max(sideLen, 0)
 	rightLen := m.width - 2 - sideLen - len(label)
-	if rightLen < 0 {
-		rightLen = 0
-	}
+	rightLen = max(rightLen, 0)
 	title := "┌" + strings.Repeat("─", sideLen) + label + strings.Repeat("─", rightLen) + "┐"
 	b.WriteString(headerStyle.Render(title))
 	b.WriteByte('\n')
@@ -260,11 +254,11 @@ func renderBar(label string, usedPercent float64, barWidth int, resetInfo string
 
 	var b strings.Builder
 	b.WriteString("  " + labelStyle.Render(label) + "\n")
-	b.WriteString(fmt.Sprintf("   Used:%s  %s%s  %s\n",
+	fmt.Fprintf(&b, "   Used:%s  %s%s  %s\n",
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%%", used)),
 		filled, empty,
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%% free", remaining)),
-	))
+	)
 	b.WriteString("   " + dimStyle.Render(resetInfo) + "\n")
 	return b.String()
 }
@@ -277,9 +271,7 @@ func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo
 	// Shrink bar to fit label, pct, and fixed-width reset info on one line
 	overhead := barPadding + compactResetWidth + 2
 	compactBarWidth := barWidth - overhead
-	if compactBarWidth < 10 {
-		compactBarWidth = 10
-	}
+	compactBarWidth = max(compactBarWidth, 10)
 
 	filledCount := int(math.Round(used / 100 * float64(compactBarWidth)))
 	emptyCount := compactBarWidth - filledCount
@@ -292,12 +284,12 @@ func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo
 	reset := fmt.Sprintf("%*s", compactResetWidth, resetInfo)
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("  %s%s  %s%s  %s\n",
+	fmt.Fprintf(&b, "  %s%s  %s%s  %s\n",
 		labelStyle.Render(label),
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%%", used)),
 		filled, empty,
 		dimStyle.Render(reset),
-	))
+	)
 	return b.String()
 }
 
