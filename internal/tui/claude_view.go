@@ -48,7 +48,11 @@ func (m Model) claudeSection() string {
 	if w := u.SessionLimit; w != nil {
 		resetInfo := ""
 		if !w.ResetAt.IsZero() {
-			resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("3:04 PM"), timeUntil(w.ResetAt))
+			if m.claudeUIConfig.Compact {
+				resetInfo = timeUntil(w.ResetAt)
+			} else {
+				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("3:04 PM"), timeUntil(w.ResetAt))
+			}
 		}
 		b.WriteString(render("5h Limit", w.Utilization*100, bw, resetInfo))
 		if !m.claudeUIConfig.Compact {
@@ -59,7 +63,11 @@ func (m Model) claudeSection() string {
 	if w := u.WeeklyLimit; w != nil {
 		resetInfo := ""
 		if !w.ResetAt.IsZero() {
-			resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetAt))
+			if m.claudeUIConfig.Compact {
+				resetInfo = timeUntil(w.ResetAt)
+			} else {
+				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetAt))
+			}
 		}
 		b.WriteString(render("Weekly  ", w.Utilization*100, bw, resetInfo))
 		if !m.claudeUIConfig.Compact {

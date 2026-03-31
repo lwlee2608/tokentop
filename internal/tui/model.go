@@ -269,13 +269,13 @@ func renderBar(label string, usedPercent float64, barWidth int, resetInfo string
 	return b.String()
 }
 
+const compactResetWidth = 12 // fixed width for reset info, e.g. "in 164h 58m"
+
 func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo string) string {
 	used := math.Min(usedPercent, 100)
 
-	// Shrink bar to fit label, pct, and reset info on one line
-	// Layout: "  {label}{pct}  {bar}  {resetInfo}"
-	//          2 + labelWidth + 5(pct) + 2 + bar + 2 + len(resetInfo)
-	overhead := barPadding + len(resetInfo)
+	// Shrink bar to fit label, pct, and fixed-width reset info on one line
+	overhead := barPadding + compactResetWidth + 2
 	compactBarWidth := barWidth - overhead
 	if compactBarWidth < 10 {
 		compactBarWidth = 10
@@ -289,16 +289,14 @@ func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo
 	filled := barFilledStyle(c).Render(strings.Repeat(" ", filledCount))
 	empty := barEmptyStyle.Render(strings.Repeat(" ", emptyCount))
 
+	reset := fmt.Sprintf("%*s", compactResetWidth, resetInfo)
+
 	var b strings.Builder
-	reset := ""
-	if resetInfo != "" {
-		reset = "  " + dimStyle.Render(resetInfo)
-	}
-	b.WriteString(fmt.Sprintf("  %s%s  %s%s%s\n",
+	b.WriteString(fmt.Sprintf("  %s%s  %s%s  %s\n",
 		labelStyle.Render(label),
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%%", used)),
 		filled, empty,
-		reset,
+		dimStyle.Render(reset),
 	))
 	return b.String()
 }

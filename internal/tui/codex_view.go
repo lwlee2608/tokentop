@@ -54,26 +54,32 @@ func (m Model) codexSection() string {
 	}
 
 	if w := u.RateLimit.PrimaryWindow; w != nil {
-		b.WriteString(render("5h Limit", w.UsedPercent, bw,
-			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("3:04 PM"), timeUntil(w.ResetTime())),
-		))
+		resetInfo := fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("3:04 PM"), timeUntil(w.ResetTime()))
+		if m.codexUIConfig.Compact {
+			resetInfo = timeUntil(w.ResetTime())
+		}
+		b.WriteString(render("5h Limit", w.UsedPercent, bw, resetInfo))
 		if !m.codexUIConfig.Compact {
 			b.WriteByte('\n')
 		}
 	}
 	if w := u.RateLimit.SecondaryWindow; w != nil {
-		b.WriteString(render("Weekly  ", w.UsedPercent, bw,
-			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime())),
-		))
+		resetInfo := fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime()))
+		if m.codexUIConfig.Compact {
+			resetInfo = timeUntil(w.ResetTime())
+		}
+		b.WriteString(render("Weekly  ", w.UsedPercent, bw, resetInfo))
 		if !m.codexUIConfig.Compact {
 			b.WriteByte('\n')
 		}
 	}
 	if m.codexUIConfig.CodeReview {
 		if w := u.CodeReviewRateLimit.PrimaryWindow; w != nil {
-			b.WriteString(render("Code Review", w.UsedPercent, bw,
-				fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime())),
-			))
+			resetInfo := fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime()))
+			if m.codexUIConfig.Compact {
+				resetInfo = timeUntil(w.ResetTime())
+			}
+			b.WriteString(render("Code Review", w.UsedPercent, bw, resetInfo))
 			if !m.codexUIConfig.Compact {
 				b.WriteByte('\n')
 			}
