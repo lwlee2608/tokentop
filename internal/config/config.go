@@ -13,6 +13,7 @@ type Config struct {
 	Log          LogConfig          `mapstructure:"log"`
 	Providers    ProvidersConfig    `mapstructure:"providers"`
 	CodexUI      CodexUIConfig      `mapstructure:"codex_ui"`
+	ClaudeUI     ClaudeUIConfig     `mapstructure:"claude_ui"`
 	OpenRouterUI OpenRouterUIConfig `mapstructure:"openrouter_ui"`
 }
 
@@ -32,7 +33,12 @@ type ProviderConfig struct {
 }
 
 type CodexUIConfig struct {
+	Compact    bool `mapstructure:"compact"`
 	CodeReview bool `mapstructure:"code_review"`
+}
+
+type ClaudeUIConfig struct {
+	Compact bool `mapstructure:"compact"`
 }
 
 type OpenRouterUIConfig struct {

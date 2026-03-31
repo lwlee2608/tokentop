@@ -44,11 +44,12 @@ type claudeUsageMsg struct {
 type claudeRetryMsg struct{}
 
 type Model struct {
-	version       string
-	width         int
-	lastFetch     time.Time
-	codexUIConfig config.CodexUIConfig
-	orUIConfig    config.OpenRouterUIConfig
+	version        string
+	width          int
+	lastFetch      time.Time
+	codexUIConfig  config.CodexUIConfig
+	claudeUIConfig config.ClaudeUIConfig
+	orUIConfig     config.OpenRouterUIConfig
 
 	codexAuth    *codex.Auth
 	codexUsage   *codex.Usage
@@ -66,14 +67,15 @@ type Model struct {
 	claudeRetries int
 }
 
-func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth, codexUIConfig config.CodexUIConfig, orUIConfig config.OpenRouterUIConfig, version string) Model {
+func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth, codexUIConfig config.CodexUIConfig, claudeUIConfig config.ClaudeUIConfig, orUIConfig config.OpenRouterUIConfig, version string) Model {
 	return Model{
-		codexAuth:     codexAuth,
-		orAuth:        orAuth,
-		claudeAuth:    claudeAuth,
-		codexUIConfig: codexUIConfig,
-		orUIConfig:    orUIConfig,
-		version:       version,
+		codexAuth:      codexAuth,
+		orAuth:         orAuth,
+		claudeAuth:     claudeAuth,
+		codexUIConfig:  codexUIConfig,
+		claudeUIConfig: claudeUIConfig,
+		orUIConfig:     orUIConfig,
+		version:        version,
 	}
 }
 
@@ -264,6 +266,40 @@ func renderBar(label string, usedPercent float64, barWidth int, resetInfo string
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%% free", remaining)),
 	))
 	b.WriteString("   " + dimStyle.Render(resetInfo) + "\n")
+	return b.String()
+}
+
+func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo string) string {
+	used := math.Min(usedPercent, 100)
+
+	// Shrink bar to fit label, pct, and reset info on one line
+	// Layout: "  {label}{pct}  {bar}  {resetInfo}"
+	//          2 + labelWidth + 5(pct) + 2 + bar + 2 + len(resetInfo)
+	overhead := barPadding + len(resetInfo)
+	compactBarWidth := barWidth - overhead
+	if compactBarWidth < 10 {
+		compactBarWidth = 10
+	}
+
+	filledCount := int(math.Round(used / 100 * float64(compactBarWidth)))
+	emptyCount := compactBarWidth - filledCount
+
+	c := usageColor(used)
+
+	filled := barFilledStyle(c).Render(strings.Repeat(" ", filledCount))
+	empty := barEmptyStyle.Render(strings.Repeat(" ", emptyCount))
+
+	var b strings.Builder
+	reset := ""
+	if resetInfo != "" {
+		reset = "  " + dimStyle.Render(resetInfo)
+	}
+	b.WriteString(fmt.Sprintf("  %s%s  %s%s%s\n",
+		labelStyle.Render(label),
+		pctStyle(c).Render(fmt.Sprintf("%4.0f%%", used)),
+		filled, empty,
+		reset,
+	))
 	return b.String()
 }
 

@@ -11,7 +11,11 @@ providers:
     enabled: true
 
 codex_ui:
+  compact: false
   code_review: false
+
+claude_ui:
+  compact: false
 
 openrouter_ui:
   summary: true
