@@ -2,7 +2,7 @@ package tui
 
 import "github.com/charmbracelet/lipgloss"
 
-const barPadding = 30 // space taken by "  Used: XXX%  " + " XXX% free"
+const barPadding = 12
 
 var (
 	green  = lipgloss.Color("2")

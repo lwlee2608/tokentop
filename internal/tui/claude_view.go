@@ -34,29 +34,48 @@ func (m Model) claudeSection() string {
 
 	u := m.claudeUsage
 	bw := m.barWidth()
+	render := renderBar
+	if m.claudeUIConfig.Compact {
+		render = renderCompactBar
+	}
 
 	b.WriteString(dimStyle.Render(fmt.Sprintf("  Plan: %s | Tier: %s", u.SubscriptionType, u.RateLimitTier)))
 	b.WriteByte('\n')
-	b.WriteByte('\n')
+	if !m.claudeUIConfig.Compact {
+		b.WriteByte('\n')
+	}
 
 	if w := u.SessionLimit; w != nil {
 		resetInfo := ""
 		if !w.ResetAt.IsZero() {
-			resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("3:04 PM"), timeUntil(w.ResetAt))
+			if m.claudeUIConfig.Compact {
+				resetInfo = timeUntil(w.ResetAt)
+			} else {
+				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("3:04 PM"), timeUntil(w.ResetAt))
+			}
 		}
-		b.WriteString(renderBar("5h Limit", w.Utilization*100, bw, resetInfo))
-		b.WriteByte('\n')
+		b.WriteString(render("5h Limit", w.Utilization*100, bw, resetInfo))
+		if !m.claudeUIConfig.Compact {
+			b.WriteByte('\n')
+		}
 	}
 
 	if w := u.WeeklyLimit; w != nil {
 		resetInfo := ""
 		if !w.ResetAt.IsZero() {
-			resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetAt))
+			if m.claudeUIConfig.Compact {
+				resetInfo = timeUntil(w.ResetAt)
+			} else {
+				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetAt))
+			}
 		}
-		b.WriteString(renderBar("Weekly", w.Utilization*100, bw, resetInfo))
-		b.WriteByte('\n')
+		b.WriteString(render("Weekly  ", w.Utilization*100, bw, resetInfo))
+		if !m.claudeUIConfig.Compact {
+			b.WriteByte('\n')
+		}
 	}
 
+	b.WriteByte('\n')
 	return b.String()
 }
 
