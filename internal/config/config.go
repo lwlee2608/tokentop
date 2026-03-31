@@ -10,8 +10,9 @@ import (
 )
 
 type Config struct {
-	Log          LogConfig        `mapstructure:"log"`
-	Providers    ProvidersConfig  `mapstructure:"providers"`
+	Log          LogConfig          `mapstructure:"log"`
+	Providers    ProvidersConfig    `mapstructure:"providers"`
+	CodexUI      CodexUIConfig      `mapstructure:"codex_ui"`
 	OpenRouterUI OpenRouterUIConfig `mapstructure:"openrouter_ui"`
 }
 
@@ -28,6 +29,10 @@ type ProvidersConfig struct {
 
 type ProviderConfig struct {
 	Enabled bool `mapstructure:"enabled"`
+}
+
+type CodexUIConfig struct {
+	CodeReview bool `mapstructure:"code_review"`
 }
 
 type OpenRouterUIConfig struct {

@@ -59,11 +59,13 @@ func (m Model) codexSection() string {
 		))
 		b.WriteByte('\n')
 	}
-	if w := u.CodeReviewRateLimit.PrimaryWindow; w != nil {
-		b.WriteString(renderBar("Code Review", w.UsedPercent, bw,
-			fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime())),
-		))
-		b.WriteByte('\n')
+	if m.codexUIConfig.CodeReview {
+		if w := u.CodeReviewRateLimit.PrimaryWindow; w != nil {
+			b.WriteString(renderBar("Code Review", w.UsedPercent, bw,
+				fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime())),
+			))
+			b.WriteByte('\n')
+		}
 	}
 
 	// b.WriteByte('\n')

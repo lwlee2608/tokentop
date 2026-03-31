@@ -1,0 +1,68 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/lwlee2608/tokentop/pkg/claude"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+func (m Model) claudeSection() string {
+	var b strings.Builder
+	b.WriteString(sectionStyle.Render(" Claude"))
+	b.WriteByte('\n')
+
+	if m.claudeUsage == nil && m.claudeErr == "" {
+		b.WriteString(dimStyle.Render("  Loading..."))
+		b.WriteByte('\n')
+		return b.String()
+	}
+
+	if m.claudeErr != "" {
+		c := yellow
+		if m.claudeUsage == nil {
+			c = red
+		}
+		b.WriteString(pctStyle(c).Render(fmt.Sprintf("  ⚠️  %s (retry %d/%d)", m.claudeErr, m.claudeRetries, maxRetries)))
+		b.WriteByte('\n')
+		if m.claudeUsage == nil {
+			return b.String()
+		}
+	}
+
+	u := m.claudeUsage
+	bw := m.barWidth()
+
+	b.WriteString(dimStyle.Render(fmt.Sprintf("  Plan: %s | Tier: %s", u.SubscriptionType, u.RateLimitTier)))
+	b.WriteByte('\n')
+	b.WriteByte('\n')
+
+	if w := u.SessionLimit; w != nil {
+		resetInfo := ""
+		if !w.ResetAt.IsZero() {
+			resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("3:04 PM"), timeUntil(w.ResetAt))
+		}
+		b.WriteString(renderBar("5h Limit", w.Utilization*100, bw, resetInfo))
+		b.WriteByte('\n')
+	}
+
+	if w := u.WeeklyLimit; w != nil {
+		resetInfo := ""
+		if !w.ResetAt.IsZero() {
+			resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetAt))
+		}
+		b.WriteString(renderBar("Weekly", w.Utilization*100, bw, resetInfo))
+		b.WriteByte('\n')
+	}
+
+	return b.String()
+}
+
+func fetchClaudeUsage(auth *claude.Auth) tea.Cmd {
+	return func() tea.Msg {
+		usage, err := claude.FetchUsage(auth)
+		return claudeUsageMsg{usage: usage, err: err}
+	}
+}
