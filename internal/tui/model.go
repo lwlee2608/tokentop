@@ -263,13 +263,13 @@ func renderBar(label string, usedPercent float64, barWidth int, resetInfo string
 	return b.String()
 }
 
-const compactResetWidth = 8 // fixed width for reset info, e.g. "in 164h 58m"
+const compactResetWidth = 8 // fixed width for reset info, e.g. "168h 59m"
 
 func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo string) string {
 	used := math.Min(usedPercent, 100)
 
 	// Shrink bar to fit label, pct, and fixed-width reset info on one line
-	overhead := barPadding + compactResetWidth + 2
+	overhead := barPadding + compactResetWidth - 2
 	compactBarWidth := barWidth - overhead
 	compactBarWidth = max(compactBarWidth, 10)
 
