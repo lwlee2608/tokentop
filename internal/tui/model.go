@@ -9,12 +9,13 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lwlee2608/tokentop/internal/config"
+	"github.com/lwlee2608/tokentop/pkg/claude"
 	"github.com/lwlee2608/tokentop/pkg/codex"
 	"github.com/lwlee2608/tokentop/pkg/openrouter"
 )
 
 const (
-	refreshInterval = 30 * time.Second
+	refreshInterval = 5 * time.Minute
 	retryDelay      = 5 * time.Second
 	maxRetries      = 3
 )
@@ -35,11 +36,19 @@ type orUsageMsg struct {
 
 type orRetryMsg struct{}
 
+type claudeUsageMsg struct {
+	usage *claude.Usage
+	err   error
+}
+
+type claudeRetryMsg struct{}
+
 type Model struct {
-	version    string
-	width      int
-	lastFetch  time.Time
-	orUIConfig config.OpenRouterUIConfig
+	version       string
+	width         int
+	lastFetch     time.Time
+	codexUIConfig config.CodexUIConfig
+	orUIConfig    config.OpenRouterUIConfig
 
 	codexAuth    *codex.Auth
 	codexUsage   *codex.Usage
@@ -50,14 +59,21 @@ type Model struct {
 	orUsage   *openrouter.Usage
 	orErr     string
 	orRetries int
+
+	claudeAuth    *claude.Auth
+	claudeUsage   *claude.Usage
+	claudeErr     string
+	claudeRetries int
 }
 
-func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, orUIConfig config.OpenRouterUIConfig, version string) Model {
+func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth, codexUIConfig config.CodexUIConfig, orUIConfig config.OpenRouterUIConfig, version string) Model {
 	return Model{
-		codexAuth:  codexAuth,
-		orAuth:     orAuth,
-		orUIConfig: orUIConfig,
-		version:    version,
+		codexAuth:     codexAuth,
+		orAuth:        orAuth,
+		claudeAuth:    claudeAuth,
+		codexUIConfig: codexUIConfig,
+		orUIConfig:    orUIConfig,
+		version:       version,
 	}
 }
 
@@ -68,6 +84,9 @@ func (m Model) Init() tea.Cmd {
 	}
 	if m.orAuth != nil {
 		cmds = append(cmds, fetchORUsage(m.orAuth))
+	}
+	if m.claudeAuth != nil {
+		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth))
 	}
 	return tea.Batch(cmds...)
 }
@@ -85,6 +104,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		m.codexRetries = 0
 		m.orRetries = 0
+		m.claudeRetries = 0
 		slog.Debug("starting usage refresh")
 		var cmds []tea.Cmd
 		if m.codexAuth != nil {
@@ -92,6 +112,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.orAuth != nil {
 			cmds = append(cmds, fetchORUsage(m.orAuth))
+		}
+		if m.claudeAuth != nil {
+			cmds = append(cmds, fetchClaudeUsage(m.claudeAuth))
 		}
 		cmds = append(cmds, tick())
 		return m, tea.Batch(cmds...)
@@ -101,6 +124,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case orRetryMsg:
 		return m, fetchORUsage(m.orAuth)
+
+	case claudeRetryMsg:
+		return m, fetchClaudeUsage(m.claudeAuth)
 
 	case codexUsageMsg:
 		if msg.err != nil {
@@ -146,6 +172,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.lastFetch = time.Now()
 			slog.Debug("openrouter usage refresh succeeded")
 		}
+
+	case claudeUsageMsg:
+		if msg.err != nil {
+			m.claudeErr = msg.err.Error()
+			slog.Warn("claude usage refresh failed", "error", msg.err, "retry", m.claudeRetries, "max_retries", maxRetries)
+			if m.claudeRetries < maxRetries {
+				m.claudeRetries++
+				slog.Debug("scheduling claude usage retry", "retry", m.claudeRetries, "delay", retryDelay.String())
+				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return claudeRetryMsg{} })
+			}
+			slog.Error("claude usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
+		} else {
+			m.claudeUsage = msg.usage
+			m.claudeErr = ""
+			m.claudeRetries = 0
+			m.lastFetch = time.Now()
+			slog.Debug("claude usage refresh succeeded")
+		}
 	}
 	return m, nil
 }
@@ -175,14 +219,15 @@ func (m Model) View() string {
 	b.WriteString(headerStyle.Render(title))
 	b.WriteByte('\n')
 
+	if m.claudeAuth != nil {
+		b.WriteString(m.claudeSection())
+	}
 	if m.codexAuth != nil {
 		b.WriteString(m.codexSection())
 	}
 	if m.orAuth != nil {
 		b.WriteString(m.orSection())
 	}
-
-	// TODO: anthropic section (not yet implemented)
 
 	b.WriteString(m.footer())
 	return b.String()

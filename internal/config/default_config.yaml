@@ -8,10 +8,14 @@ providers:
   openrouter:
     enabled: true
   anthropic:
-    enabled: false
+    enabled: true
+
+codex_ui:
+  code_review: false
 
 openrouter_ui:
   summary: true
   daily_spend: true
   top_models: true
   api_keys: false
+
