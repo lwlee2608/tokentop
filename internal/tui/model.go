@@ -21,6 +21,7 @@ const (
 )
 
 type tickMsg time.Time
+type countdownMsg time.Time
 
 type codexUsageMsg struct {
 	usage *codex.Usage
@@ -47,6 +48,7 @@ type Model struct {
 	version        string
 	width          int
 	lastFetch      time.Time
+	nextRefresh    time.Time
 	codexUIConfig  config.CodexUIConfig
 	claudeUIConfig config.ClaudeUIConfig
 	orUIConfig     config.OpenRouterUIConfig
@@ -76,11 +78,12 @@ func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth
 		claudeUIConfig: claudeUIConfig,
 		orUIConfig:     orUIConfig,
 		version:        version,
+		nextRefresh:    time.Now().Add(refreshInterval),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{tick()}
+	cmds := []tea.Cmd{tick(), countdown()}
 	if m.codexAuth != nil {
 		cmds = append(cmds, fetchCodexUsage(m.codexAuth))
 	}
@@ -103,7 +106,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
+	case countdownMsg:
+		return m, countdown()
+
 	case tickMsg:
+		m.nextRefresh = time.Now().Add(refreshInterval)
 		m.codexRetries = 0
 		m.orRetries = 0
 		m.claudeRetries = 0
@@ -236,7 +243,11 @@ func (m Model) footer() string {
 	} else {
 		ts = "..."
 	}
-	info := fmt.Sprintf(" refresh: %ds | updated: %s | q to quit", int(refreshInterval.Seconds()), ts)
+	remaining := time.Until(m.nextRefresh)
+	if remaining < 0 {
+		remaining = 0
+	}
+	info := fmt.Sprintf(" refresh: %ds | updated: %s | q to quit", int(remaining.Seconds()), ts)
 	return dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", m.width))
 }
 
@@ -303,6 +314,12 @@ func fetchORUsage(auth *openrouter.Auth) tea.Cmd {
 func tick() tea.Cmd {
 	return tea.Tick(refreshInterval, func(t time.Time) tea.Msg {
 		return tickMsg(t)
+	})
+}
+
+func countdown() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return countdownMsg(t)
 	})
 }
 
