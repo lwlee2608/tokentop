@@ -27,6 +27,12 @@ func barFilledStyle(c lipgloss.Color) lipgloss.Style {
 
 var barEmptyStyle = lipgloss.NewStyle().Background(gray)
 
+func compactBarFilledStyle(c lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(c)
+}
+
+var compactBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
+
 var modelBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
 
 var modelBarColors = []lipgloss.Color{cyan, blue, green, yellow, orange, pink, red}

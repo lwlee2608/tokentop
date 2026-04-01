@@ -278,8 +278,8 @@ func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo
 
 	c := usageColor(used)
 
-	filled := barFilledStyle(c).Render(strings.Repeat(" ", filledCount))
-	empty := barEmptyStyle.Render(strings.Repeat(" ", emptyCount))
+	filled := compactBarFilledStyle(c).Render(strings.Repeat("▄", filledCount))
+	empty := compactBarEmptyStyle.Render(strings.Repeat("▄", emptyCount))
 
 	reset := fmt.Sprintf("%*s", compactResetWidth, resetInfo)
 
