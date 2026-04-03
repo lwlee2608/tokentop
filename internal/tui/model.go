@@ -105,28 +105,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "q" || msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
+		if msg.String() == "r" {
+			return m.refresh()
+		}
 
 	case countdownMsg:
 		return m, countdown()
 
 	case tickMsg:
-		m.nextRefresh = time.Now().Add(refreshInterval)
-		m.codexRetries = 0
-		m.orRetries = 0
-		m.claudeRetries = 0
-		slog.Debug("starting usage refresh")
-		var cmds []tea.Cmd
-		if m.codexAuth != nil {
-			cmds = append(cmds, fetchCodexUsage(m.codexAuth))
-		}
-		if m.orAuth != nil {
-			cmds = append(cmds, fetchORUsage(m.orAuth))
-		}
-		if m.claudeAuth != nil {
-			cmds = append(cmds, fetchClaudeUsage(m.claudeAuth))
-		}
-		cmds = append(cmds, tick())
-		return m, tea.Batch(cmds...)
+		return m.refresh()
 
 	case codexRetryMsg:
 		return m, fetchCodexUsage(m.codexAuth)
@@ -203,6 +190,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) refresh() (tea.Model, tea.Cmd) {
+	m.nextRefresh = time.Now().Add(refreshInterval)
+	m.codexRetries = 0
+	m.orRetries = 0
+	m.claudeRetries = 0
+	slog.Debug("starting usage refresh")
+	var cmds []tea.Cmd
+	if m.codexAuth != nil {
+		cmds = append(cmds, fetchCodexUsage(m.codexAuth))
+	}
+	if m.orAuth != nil {
+		cmds = append(cmds, fetchORUsage(m.orAuth))
+	}
+	if m.claudeAuth != nil {
+		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth))
+	}
+	cmds = append(cmds, tick())
+	return m, tea.Batch(cmds...)
+}
+
 func (m Model) barWidth() int {
 	w := m.width - barPadding
 	w = max(w, 10)
@@ -247,7 +254,7 @@ func (m Model) footer() string {
 	if remaining < 0 {
 		remaining = 0
 	}
-	info := fmt.Sprintf(" refresh: %ds | updated: %s | q to quit", int(remaining.Seconds()), ts)
+	info := fmt.Sprintf(" refresh: %ds | updated: %s | r to refresh | q to quit", int(remaining.Seconds()), ts)
 	return dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", m.width))
 }
 
