@@ -1,12 +1,14 @@
 package config
 
 import (
+	"bytes"
 	_ "embed"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/lwlee2608/adder"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -85,6 +87,17 @@ func Load() (*Config, error) {
 	if err := a.Unmarshal(cfg); err != nil {
 		return nil, err
 	}
+
+	configPath := filepath.Join(home, ".config", "tokentop", "config.yaml")
+	if backfillDefaults(configPath) {
+		if err := a.ReadInConfig(); err != nil {
+			return nil, err
+		}
+		if err := a.Unmarshal(cfg); err != nil {
+			return nil, err
+		}
+	}
+
 	return cfg, nil
 }
 
@@ -96,4 +109,72 @@ func writeDefaultConfig(path string) {
 		return
 	}
 	_ = os.WriteFile(path, defaultConfigYAML, 0644)
+}
+
+// backfillDefaults reads the existing config file and the embedded default,
+// merges any missing keys from the default into the existing config, and
+// writes back if anything changed.
+func backfillDefaults(path string) bool {
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+
+	var existingMap map[string]any
+	if err := yaml.Unmarshal(existing, &existingMap); err != nil {
+		return false
+	}
+	if existingMap == nil {
+		existingMap = map[string]any{}
+	}
+
+	var defaultMap map[string]any
+	if err := yaml.Unmarshal(defaultConfigYAML, &defaultMap); err != nil {
+		return false
+	}
+	if defaultMap == nil {
+		return false
+	}
+
+	if !mergeDefaults(existingMap, defaultMap) {
+		return false
+	}
+
+	out, err := yaml.Marshal(existingMap)
+	if err != nil {
+		return false
+	}
+
+	// Only write if content actually changed
+	if !bytes.Equal(bytes.TrimSpace(existing), bytes.TrimSpace(out)) {
+		if err := os.WriteFile(path, out, 0644); err != nil {
+			return false
+		}
+		return true
+	}
+
+	return false
+}
+
+// mergeDefaults recursively fills missing keys in dst from src.
+// Returns true if any key was added.
+func mergeDefaults(dst, src map[string]any) bool {
+	changed := false
+	for k, srcVal := range src {
+		dstVal, exists := dst[k]
+		if !exists {
+			dst[k] = srcVal
+			changed = true
+			continue
+		}
+		// If both are maps, recurse
+		dstMap, dstOk := dstVal.(map[string]any)
+		srcMap, srcOk := srcVal.(map[string]any)
+		if dstOk && srcOk {
+			if mergeDefaults(dstMap, srcMap) {
+				changed = true
+			}
+		}
+	}
+	return changed
 }
