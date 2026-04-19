@@ -27,6 +27,13 @@ This installs the binary to `~/.local/bin/tokentop`.
 - **Codex**: An active Codex session with auth credentials at `~/.codex/auth.json` (created automatically when you use [Codex CLI](https://github.com/openai/codex)).
 - **OpenRouter**: Set `OPENROUTER_API_KEY` environment variable. A management key is required for activity and credit details.
 
+## Documentation
+
+- [Configuration](docs/configuration.md) — every config field, defaults, and examples
+- [Providers](docs/providers.md) — how Codex, OpenRouter, and Claude credentials are detected
+- [Keybindings & CLI flags](docs/keybindings.md)
+- [Troubleshooting](docs/troubleshooting.md)
+
 ## License
 
 MIT
