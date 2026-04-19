@@ -38,6 +38,26 @@ var compactBarSlackStyle = lipgloss.NewStyle().Foreground(slack)
 
 var barSlackStyle = lipgloss.NewStyle().Background(slack)
 
+func compactBarOverPaceStyle(usage lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(overPaceColor(usage))
+}
+
+func barOverPaceStyle(usage lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().Background(overPaceColor(usage))
+}
+
+// overPaceColor returns a color one step more alarming than the usage color.
+func overPaceColor(c lipgloss.Color) lipgloss.Color {
+	switch c {
+	case green:
+		return yellow
+	case yellow:
+		return red
+	default:
+		return red
+	}
+}
+
 var modelBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
 
 var modelBarColors = []lipgloss.Color{cyan, blue, green, yellow, orange, pink, red}

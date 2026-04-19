@@ -280,8 +280,10 @@ func renderBar(label string, usedPercent, elapsedPercent float64, barWidth int, 
 	var bar strings.Builder
 	for i := 0; i < barWidth; i++ {
 		switch {
-		case i < filledCount:
+		case i < filledCount && i < eCount:
 			bar.WriteString(barFilledStyle(c).Render(" "))
+		case i < filledCount:
+			bar.WriteString(barOverPaceStyle(c).Render(" "))
 		case i < eCount:
 			bar.WriteString(barSlackStyle.Render(" "))
 		default:
@@ -317,8 +319,10 @@ func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidt
 	var bar strings.Builder
 	for i := 0; i < compactBarWidth; i++ {
 		switch {
-		case i < filledCount:
+		case i < filledCount && i < eCount:
 			bar.WriteString(compactBarFilledStyle(c).Render("▄"))
+		case i < filledCount:
+			bar.WriteString(compactBarOverPaceStyle(c).Render("▄"))
 		case i < eCount:
 			bar.WriteString(compactBarSlackStyle.Render("▄"))
 		default:
