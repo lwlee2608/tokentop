@@ -35,9 +35,7 @@ var compactBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
 
 var tickStyle = lipgloss.NewStyle().Foreground(white).Bold(true)
 
-func barTickStyle(bg lipgloss.Color) lipgloss.Style {
-	return lipgloss.NewStyle().Background(bg).Foreground(white).Bold(true)
-}
+var barTickStyle = lipgloss.NewStyle().Background(white)
 
 var modelBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
 
