@@ -285,9 +285,9 @@ func renderBar(label string, usedPercent, elapsedPercent float64, barWidth int, 
 		inFilled := i < filledCount
 		if i == tIdx {
 			if inFilled {
-				bar.WriteString(barTickStyle(c).Render("│"))
+				bar.WriteString(barTickStyle(c).Render("▀"))
 			} else {
-				bar.WriteString(barTickStyle(gray).Render("│"))
+				bar.WriteString(barTickStyle(gray).Render("▀"))
 			}
 			continue
 		}
@@ -326,7 +326,7 @@ func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidt
 	var bar strings.Builder
 	for i := 0; i < compactBarWidth; i++ {
 		if i == tIdx {
-			bar.WriteString(tickStyle.Render("│"))
+			bar.WriteString(tickStyle.Render("▀"))
 			continue
 		}
 		if i < filledCount {
