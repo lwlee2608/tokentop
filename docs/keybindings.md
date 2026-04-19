@@ -18,6 +18,7 @@ Flags override the `providers` section of the config for the current run only.
 | `--claude`     | Run with only Claude |
 | `--openrouter` | Run with only OpenRouter |
 | `--all`        | Force all three providers on |
+| `--version`    | Print version and exit |
 
 Example:
 

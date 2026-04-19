@@ -22,7 +22,13 @@ func main() {
 	onlyClaude := flag.Bool("claude", false, "start with only Claude provider")
 	onlyOpenRouter := flag.Bool("openrouter", false, "start with only OpenRouter provider")
 	allProviders := flag.Bool("all", false, "start with all providers enabled")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(AppVersion)
+		return
+	}
 
 	cfg, err := config.Load()
 	if err != nil {
