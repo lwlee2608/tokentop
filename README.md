@@ -1,6 +1,10 @@
 # tokentop
 
 [![CI](https://github.com/lwlee2608/tokentop/actions/workflows/ci.yml/badge.svg)](https://github.com/lwlee2608/tokentop/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/lwlee2608/tokentop?sort=semver)](https://github.com/lwlee2608/tokentop/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lwlee2608/tokentop)](https://goreportcard.com/report/github.com/lwlee2608/tokentop)
+[![Go Version](https://img.shields.io/github/go-mod-go-version/lwlee2608/tokentop)](https://github.com/lwlee2608/tokentop/blob/main/go.mod)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A terminal dashboard for monitoring your API usage in real time. Supports [OpenAI Codex](https://chatgpt.com/codex) and [OpenRouter](https://openrouter.ai/).
 
