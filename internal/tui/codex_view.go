@@ -3,11 +3,19 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/lwlee2608/tokentop/pkg/codex"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+func codexElapsedPercent(w *codex.UsageWindow) float64 {
+	if w == nil || w.LimitWindowSeconds <= 0 {
+		return 0
+	}
+	return elapsedPercent(w.ResetTime(), time.Duration(w.LimitWindowSeconds)*time.Second)
+}
 
 func (m Model) codexSection() string {
 	var b strings.Builder
@@ -58,7 +66,7 @@ func (m Model) codexSection() string {
 		if m.codexUIConfig.Compact {
 			resetInfo = timeUntil(w.ResetTime())
 		}
-		b.WriteString(render("5h Limit", w.UsedPercent, bw, resetInfo))
+		b.WriteString(render("5h Limit", w.UsedPercent, codexElapsedPercent(w), bw, resetInfo))
 		if !m.codexUIConfig.Compact {
 			b.WriteByte('\n')
 		}
@@ -68,7 +76,7 @@ func (m Model) codexSection() string {
 		if m.codexUIConfig.Compact {
 			resetInfo = timeUntil(w.ResetTime())
 		}
-		b.WriteString(render("Weekly  ", w.UsedPercent, bw, resetInfo))
+		b.WriteString(render("Weekly  ", w.UsedPercent, codexElapsedPercent(w), bw, resetInfo))
 		if !m.codexUIConfig.Compact {
 			b.WriteByte('\n')
 		}
@@ -79,7 +87,7 @@ func (m Model) codexSection() string {
 			if m.codexUIConfig.Compact {
 				resetInfo = timeUntil(w.ResetTime())
 			}
-			b.WriteString(render("Code Review", w.UsedPercent, bw, resetInfo))
+			b.WriteString(render("Code Review", w.UsedPercent, codexElapsedPercent(w), bw, resetInfo))
 			if !m.codexUIConfig.Compact {
 				b.WriteByte('\n')
 			}
