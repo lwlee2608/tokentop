@@ -15,6 +15,13 @@ const (
 	claudeWeeklyWindow  = 7 * 24 * time.Hour
 )
 
+func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) float64 {
+	if !m.claudeUIConfig.PaceTick {
+		return 0
+	}
+	return elapsedPercent(resetAt, window)
+}
+
 func (m Model) claudeSection() string {
 	var b strings.Builder
 	b.WriteString(sectionStyle.Render(" Claude"))
@@ -60,7 +67,7 @@ func (m Model) claudeSection() string {
 				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("3:04 PM"), timeUntil(w.ResetAt))
 			}
 		}
-		b.WriteString(render("5h Limit", w.Utilization*100, elapsedPercent(w.ResetAt, claudeSessionWindow), bw, resetInfo))
+		b.WriteString(render("5h Limit", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeSessionWindow), bw, resetInfo))
 		if !m.claudeUIConfig.Compact {
 			b.WriteByte('\n')
 		}
@@ -75,7 +82,7 @@ func (m Model) claudeSection() string {
 				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetAt))
 			}
 		}
-		b.WriteString(render("Weekly  ", w.Utilization*100, elapsedPercent(w.ResetAt, claudeWeeklyWindow), bw, resetInfo))
+		b.WriteString(render("Weekly  ", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeWeeklyWindow), bw, resetInfo))
 		if !m.claudeUIConfig.Compact {
 			b.WriteByte('\n')
 		}

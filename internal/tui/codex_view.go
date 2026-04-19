@@ -10,8 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func codexElapsedPercent(w *codex.UsageWindow) float64 {
-	if w == nil || w.LimitWindowSeconds <= 0 {
+func (m Model) codexElapsedPercent(w *codex.UsageWindow) float64 {
+	if !m.codexUIConfig.PaceTick || w == nil || w.LimitWindowSeconds <= 0 {
 		return 0
 	}
 	return elapsedPercent(w.ResetTime(), time.Duration(w.LimitWindowSeconds)*time.Second)
@@ -66,7 +66,7 @@ func (m Model) codexSection() string {
 		if m.codexUIConfig.Compact {
 			resetInfo = timeUntil(w.ResetTime())
 		}
-		b.WriteString(render("5h Limit", w.UsedPercent, codexElapsedPercent(w), bw, resetInfo))
+		b.WriteString(render("5h Limit", w.UsedPercent, m.codexElapsedPercent(w), bw, resetInfo))
 		if !m.codexUIConfig.Compact {
 			b.WriteByte('\n')
 		}
@@ -76,7 +76,7 @@ func (m Model) codexSection() string {
 		if m.codexUIConfig.Compact {
 			resetInfo = timeUntil(w.ResetTime())
 		}
-		b.WriteString(render("Weekly  ", w.UsedPercent, codexElapsedPercent(w), bw, resetInfo))
+		b.WriteString(render("Weekly  ", w.UsedPercent, m.codexElapsedPercent(w), bw, resetInfo))
 		if !m.codexUIConfig.Compact {
 			b.WriteByte('\n')
 		}
@@ -87,7 +87,7 @@ func (m Model) codexSection() string {
 			if m.codexUIConfig.Compact {
 				resetInfo = timeUntil(w.ResetTime())
 			}
-			b.WriteString(render("Code Review", w.UsedPercent, codexElapsedPercent(w), bw, resetInfo))
+			b.WriteString(render("Code Review", w.UsedPercent, m.codexElapsedPercent(w), bw, resetInfo))
 			if !m.codexUIConfig.Compact {
 				b.WriteByte('\n')
 			}
