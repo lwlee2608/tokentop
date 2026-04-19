@@ -15,12 +15,18 @@ A terminal dashboard for monitoring your API usage in real time. Supports [OpenA
 ## Install
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/lwlee2608/tokentop/main/install.sh | sh
+```
+
+Or build from source:
+
+```sh
 git clone https://github.com/lwlee2608/tokentop.git
 cd tokentop
 make install
 ```
 
-This installs the binary to `~/.local/bin/tokentop`.
+Both methods install the binary to `~/.local/bin/tokentop`. Override with `PREFIX=/usr/local`.
 
 ## Prerequisites
 
