@@ -258,18 +258,15 @@ func (m Model) footer() string {
 	return dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", m.width))
 }
 
-func tickIndex(elapsedPercent float64, barWidth int) int {
-	if elapsedPercent <= 0 || elapsedPercent >= 100 {
-		return -1
+func elapsedCells(elapsedPercent float64, barWidth int) int {
+	if elapsedPercent <= 0 {
+		return 0
 	}
-	idx := int(math.Round(elapsedPercent/100*float64(barWidth))) - 1
-	if idx < 0 {
-		idx = 0
+	n := int(math.Round(elapsedPercent / 100 * float64(barWidth)))
+	if n > barWidth {
+		n = barWidth
 	}
-	if idx >= barWidth {
-		idx = barWidth - 1
-	}
-	return idx
+	return n
 }
 
 func renderBar(label string, usedPercent, elapsedPercent float64, barWidth int, resetInfo string) string {
@@ -278,18 +275,16 @@ func renderBar(label string, usedPercent, elapsedPercent float64, barWidth int, 
 
 	filledCount := int(math.Round(used / 100 * float64(barWidth)))
 	c := usageColor(used)
-	tIdx := tickIndex(elapsedPercent, barWidth)
+	eCount := elapsedCells(elapsedPercent, barWidth)
 
 	var bar strings.Builder
 	for i := 0; i < barWidth; i++ {
-		inFilled := i < filledCount
-		if i == tIdx {
-			bar.WriteString(barTickStyle.Render(" "))
-			continue
-		}
-		if inFilled {
+		switch {
+		case i < filledCount:
 			bar.WriteString(barFilledStyle(c).Render(" "))
-		} else {
+		case i < eCount:
+			bar.WriteString(barSlackStyle.Render(" "))
+		default:
 			bar.WriteString(barEmptyStyle.Render(" "))
 		}
 	}
@@ -317,17 +312,16 @@ func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidt
 
 	filledCount := int(math.Round(used / 100 * float64(compactBarWidth)))
 	c := usageColor(used)
-	tIdx := tickIndex(elapsedPercent, compactBarWidth)
+	eCount := elapsedCells(elapsedPercent, compactBarWidth)
 
 	var bar strings.Builder
 	for i := 0; i < compactBarWidth; i++ {
-		if i == tIdx {
-			bar.WriteString(tickStyle.Render("▄"))
-			continue
-		}
-		if i < filledCount {
+		switch {
+		case i < filledCount:
 			bar.WriteString(compactBarFilledStyle(c).Render("▄"))
-		} else {
+		case i < eCount:
+			bar.WriteString(compactBarSlackStyle.Render("▄"))
+		default:
 			bar.WriteString(compactBarEmptyStyle.Render("▄"))
 		}
 	}

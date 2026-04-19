@@ -14,6 +14,7 @@ var (
 	red    = lipgloss.Color("1")
 	white  = lipgloss.Color("15")
 	gray   = lipgloss.Color("237")
+	slack  = lipgloss.Color("244")
 
 	headerStyle  = lipgloss.NewStyle().Bold(true).Foreground(white)
 	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(white).Underline(true)
@@ -33,11 +34,9 @@ func compactBarFilledStyle(c lipgloss.Color) lipgloss.Style {
 
 var compactBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
 
-var tickColor = lipgloss.Color("244")
+var compactBarSlackStyle = lipgloss.NewStyle().Foreground(slack)
 
-var tickStyle = lipgloss.NewStyle().Foreground(tickColor).Bold(true)
-
-var barTickStyle = lipgloss.NewStyle().Background(tickColor)
+var barSlackStyle = lipgloss.NewStyle().Background(slack)
 
 var modelBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
 
