@@ -2,6 +2,7 @@ package tui
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,8 +19,18 @@ import (
 
 var updateGolden = flag.Bool("update", false, "update golden files")
 
-func TestCodexSectionRenderSnapshot(t *testing.T) {
+func forceTrueColorProfile(t *testing.T) {
+	t.Helper()
+
+	prev := lipgloss.ColorProfile()
 	lipgloss.SetColorProfile(termenv.TrueColor)
+	t.Cleanup(func() {
+		lipgloss.SetColorProfile(prev)
+	})
+}
+
+func TestCodexSectionRenderSnapshot(t *testing.T) {
+	forceTrueColorProfile(t)
 
 	now := time.Now()
 	balance := "12.34"
@@ -59,7 +70,9 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 	}
 
 	got := m.codexSection()
-	// fmt.Print(got)
+	if testing.Verbose() {
+		fmt.Print(got)
+	}
 	goldenPath := filepath.Join("testdata", "codex_compact.golden")
 
 	if *updateGolden {
@@ -72,7 +85,7 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 }
 
 func TestClaudeSectionRenderSnapshot(t *testing.T) {
-	lipgloss.SetColorProfile(termenv.TrueColor)
+	forceTrueColorProfile(t)
 
 	now := time.Now()
 	m := Model{
@@ -96,7 +109,9 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 	}
 
 	got := m.claudeSection()
-	// fmt.Print(got)
+	if testing.Verbose() {
+		fmt.Print(got)
+	}
 	goldenPath := filepath.Join("testdata", "claude_compact.golden")
 
 	if *updateGolden {
