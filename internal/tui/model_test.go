@@ -1,6 +1,58 @@
 package tui
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
+	"github.com/lwlee2608/tokentop/internal/config"
+	"github.com/lwlee2608/tokentop/pkg/codex"
+)
+
+func TestCodexSectionRenderSnapshot(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	now := time.Now()
+	balance := "12.34"
+	m := Model{
+		width: 80,
+		codexUIConfig: config.CodexUIConfig{
+			Compact:    true,
+			CodeReview: true,
+			PaceTick:   true,
+		},
+		codexUsage: &codex.Usage{
+			PlanType: "Pro",
+			RateLimit: codex.RateLimit{
+				PrimaryWindow: &codex.UsageWindow{
+					UsedPercent:        42,
+					LimitWindowSeconds: 5 * 60 * 60,
+					ResetAt:            now.Add(2 * time.Hour).Unix(),
+				},
+				SecondaryWindow: &codex.UsageWindow{
+					UsedPercent:        75,
+					LimitWindowSeconds: 7 * 24 * 60 * 60,
+					ResetAt:            now.Add(4 * 24 * time.Hour).Unix(),
+				},
+			},
+			CodeReviewRateLimit: codex.RateLimit{
+				PrimaryWindow: &codex.UsageWindow{
+					UsedPercent:        90,
+					LimitWindowSeconds: 7 * 24 * 60 * 60,
+					ResetAt:            now.Add(3 * 24 * time.Hour).Unix(),
+				},
+			},
+			Credits: codex.UsageCredits{
+				HasCredits: true,
+				Balance:    &balance,
+			},
+		},
+	}
+
+	fmt.Println(m.codexSection())
+}
 
 func TestBuildBarCellsStartOfWindowMarksUsageOverPace(t *testing.T) {
 	cells := buildBarCells(50, 0, 10)
