@@ -3,11 +3,24 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/lwlee2608/tokentop/pkg/claude"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+const (
+	claudeSessionWindow = 5 * time.Hour
+	claudeWeeklyWindow  = 7 * 24 * time.Hour
+)
+
+func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) float64 {
+	if !m.claudeUIConfig.PaceTick {
+		return -1
+	}
+	return elapsedPercent(resetAt, window)
+}
 
 func (m Model) claudeSection() string {
 	var b strings.Builder
@@ -54,7 +67,7 @@ func (m Model) claudeSection() string {
 				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("3:04 PM"), timeUntil(w.ResetAt))
 			}
 		}
-		b.WriteString(render("5h Limit", w.Utilization*100, bw, resetInfo))
+		b.WriteString(render("5h Limit", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeSessionWindow), bw, resetInfo))
 		if !m.claudeUIConfig.Compact {
 			b.WriteByte('\n')
 		}
@@ -69,7 +82,7 @@ func (m Model) claudeSection() string {
 				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetAt))
 			}
 		}
-		b.WriteString(render("Weekly  ", w.Utilization*100, bw, resetInfo))
+		b.WriteString(render("Weekly  ", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeWeeklyWindow), bw, resetInfo))
 		if !m.claudeUIConfig.Compact {
 			b.WriteByte('\n')
 		}

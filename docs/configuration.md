@@ -28,9 +28,11 @@ providers:
 codex_ui:
   compact: false
   code_review: false
+  pace_tick: true
 
 claude_ui:
   compact: false
+  pace_tick: true
 
 openrouter_ui:
   summary: true
@@ -68,12 +70,14 @@ CLI flags can override the providers block for a single run — see [Keybindings
 |---------------|---------|-------------|
 | `compact`     | `false` | Render Codex section in a single-line-per-bar compact form. |
 | `code_review` | `false` | Show the separate code-review rate limit window. |
+| `pace_tick`   | `true`  | Split usage bars at the time-elapsed mark to show over/under-pace burn. |
 
 ### `claude_ui`
 
-| Key       | Default | Description |
-|-----------|---------|-------------|
-| `compact` | `false` | Render Claude section in compact form. |
+| Key         | Default | Description |
+|-------------|---------|-------------|
+| `compact`   | `false` | Render Claude section in compact form. |
+| `pace_tick` | `true`  | Split usage bars at the time-elapsed mark to show over/under-pace burn. |
 
 ### `openrouter_ui`
 

@@ -37,10 +37,12 @@ type ProviderConfig struct {
 type CodexUIConfig struct {
 	Compact    bool `mapstructure:"compact"`
 	CodeReview bool `mapstructure:"code_review"`
+	PaceTick   bool `mapstructure:"pace_tick"`
 }
 
 type ClaudeUIConfig struct {
-	Compact bool `mapstructure:"compact"`
+	Compact  bool `mapstructure:"compact"`
+	PaceTick bool `mapstructure:"pace_tick"`
 }
 
 type OpenRouterUIConfig struct {
@@ -64,6 +66,12 @@ func Load() (*Config, error) {
 	a.AutomaticEnv()
 
 	cfg := &Config{
+		CodexUI: CodexUIConfig{
+			PaceTick: true,
+		},
+		ClaudeUI: ClaudeUIConfig{
+			PaceTick: true,
+		},
 		OpenRouterUI: OpenRouterUIConfig{
 			Summary:    true,
 			DailySpend: true,

@@ -258,23 +258,82 @@ func (m Model) footer() string {
 	return dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", m.width))
 }
 
-func renderBar(label string, usedPercent float64, barWidth int, resetInfo string) string {
+func elapsedCells(elapsedPercent float64, barWidth int) int {
+	if elapsedPercent <= 0 {
+		return 0
+	}
+	n := int(math.Round(elapsedPercent / 100 * float64(barWidth)))
+	if n > barWidth {
+		n = barWidth
+	}
+	return n
+}
+
+type barCellState uint8
+
+const (
+	barCellEmpty barCellState = iota
+	barCellSlack
+	barCellFilled
+	barCellOverPace
+)
+
+func buildBarCells(usedPercent, elapsedPercent float64, barWidth int) []barCellState {
+	if barWidth <= 0 {
+		return nil
+	}
+
+	used := math.Min(usedPercent, 100)
+	filledCount := int(math.Round(used / 100 * float64(barWidth)))
+
+	showElapsed := elapsedPercent >= 0
+	eCount := 0
+	if showElapsed {
+		eCount = elapsedCells(elapsedPercent, barWidth)
+	}
+
+	cells := make([]barCellState, barWidth)
+	for i := 0; i < barWidth; i++ {
+		switch {
+		case i < filledCount && (!showElapsed || i < eCount):
+			cells[i] = barCellFilled
+		case i < filledCount:
+			cells[i] = barCellOverPace
+		case showElapsed && i < eCount:
+			cells[i] = barCellSlack
+		default:
+			cells[i] = barCellEmpty
+		}
+	}
+	return cells
+}
+
+func renderBar(label string, usedPercent, elapsedPercent float64, barWidth int, resetInfo string) string {
 	used := math.Min(usedPercent, 100)
 	remaining := 100 - used
 
-	filledCount := int(math.Round(used / 100 * float64(barWidth)))
-	emptyCount := barWidth - filledCount
-
 	c := usageColor(used)
+	cells := buildBarCells(usedPercent, elapsedPercent, barWidth)
 
-	filled := barFilledStyle(c).Render(strings.Repeat(" ", filledCount))
-	empty := barEmptyStyle.Render(strings.Repeat(" ", emptyCount))
+	var bar strings.Builder
+	for _, cell := range cells {
+		switch cell {
+		case barCellFilled:
+			bar.WriteString(barFilledStyle(c).Render(" "))
+		case barCellOverPace:
+			bar.WriteString(barOverPaceStyle(c).Render(" "))
+		case barCellSlack:
+			bar.WriteString(barSlackStyle.Render(" "))
+		case barCellEmpty:
+			bar.WriteString(barEmptyStyle.Render(" "))
+		}
+	}
 
 	var b strings.Builder
 	b.WriteString("  " + labelStyle.Render(label) + "\n")
-	fmt.Fprintf(&b, "   Used:%s  %s%s  %s\n",
+	fmt.Fprintf(&b, "   Used:%s  %s  %s\n",
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%%", used)),
-		filled, empty,
+		bar.String(),
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%% free", remaining)),
 	)
 	b.WriteString("   " + dimStyle.Render(resetInfo) + "\n")
@@ -283,7 +342,7 @@ func renderBar(label string, usedPercent float64, barWidth int, resetInfo string
 
 const compactResetWidth = 8 // fixed width for reset info, e.g. "168h 59m"
 
-func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo string) string {
+func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidth int, resetInfo string) string {
 	used := math.Min(usedPercent, 100)
 
 	// Shrink bar to fit label, pct, and fixed-width reset info on one line
@@ -291,21 +350,30 @@ func renderCompactBar(label string, usedPercent float64, barWidth int, resetInfo
 	compactBarWidth := barWidth - overhead
 	compactBarWidth = max(compactBarWidth, 10)
 
-	filledCount := int(math.Round(used / 100 * float64(compactBarWidth)))
-	emptyCount := compactBarWidth - filledCount
-
 	c := usageColor(used)
+	cells := buildBarCells(usedPercent, elapsedPercent, compactBarWidth)
 
-	filled := compactBarFilledStyle(c).Render(strings.Repeat("▄", filledCount))
-	empty := compactBarEmptyStyle.Render(strings.Repeat("▄", emptyCount))
+	var bar strings.Builder
+	for _, cell := range cells {
+		switch cell {
+		case barCellFilled:
+			bar.WriteString(compactBarFilledStyle(c).Render("▄"))
+		case barCellOverPace:
+			bar.WriteString(compactBarOverPaceStyle(c).Render("▄"))
+		case barCellSlack:
+			bar.WriteString(compactBarSlackStyle.Render("▄"))
+		case barCellEmpty:
+			bar.WriteString(compactBarEmptyStyle.Render("▄"))
+		}
+	}
 
 	reset := fmt.Sprintf("%*s", compactResetWidth, resetInfo)
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "  %s%s  %s%s  %s\n",
+	fmt.Fprintf(&b, "  %s%s  %s  %s\n",
 		labelStyle.Render(label),
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%%", used)),
-		filled, empty,
+		bar.String(),
 		dimStyle.Render(reset),
 	)
 	return b.String()
@@ -328,6 +396,20 @@ func countdown() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return countdownMsg(t)
 	})
+}
+
+func elapsedPercent(resetAt time.Time, windowDuration time.Duration) float64 {
+	if resetAt.IsZero() || windowDuration <= 0 {
+		return -1
+	}
+	remaining := time.Until(resetAt)
+	if remaining <= 0 {
+		return 100
+	}
+	if remaining >= windowDuration {
+		return 0
+	}
+	return float64(windowDuration-remaining) / float64(windowDuration) * 100
 }
 
 func timeUntil(t time.Time) string {

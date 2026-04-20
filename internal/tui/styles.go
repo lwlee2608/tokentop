@@ -5,15 +5,17 @@ import "github.com/charmbracelet/lipgloss"
 const barPadding = 12
 
 var (
-	green  = lipgloss.Color("2")
-	cyan   = lipgloss.Color("6")
-	blue   = lipgloss.Color("12")
-	orange = lipgloss.Color("208")
-	pink   = lipgloss.Color("205")
-	yellow = lipgloss.Color("3")
-	red    = lipgloss.Color("1")
-	white  = lipgloss.Color("15")
-	gray   = lipgloss.Color("237")
+	green     = lipgloss.Color("2")
+	cyan      = lipgloss.Color("6")
+	blue      = lipgloss.Color("12")
+	orange    = lipgloss.Color("208")
+	pink      = lipgloss.Color("205")
+	yellow    = lipgloss.Color("3")
+	red       = lipgloss.Color("1")
+	brightRed = lipgloss.Color("9")
+	white     = lipgloss.Color("15")
+	gray      = lipgloss.Color("237")
+	slack     = lipgloss.Color("244")
 
 	headerStyle  = lipgloss.NewStyle().Bold(true).Foreground(white)
 	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(white).Underline(true)
@@ -32,6 +34,32 @@ func compactBarFilledStyle(c lipgloss.Color) lipgloss.Style {
 }
 
 var compactBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
+
+var compactBarSlackStyle = lipgloss.NewStyle().Foreground(slack)
+
+var barSlackStyle = lipgloss.NewStyle().Background(slack)
+
+func compactBarOverPaceStyle(usage lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(overPaceColor(usage))
+}
+
+func barOverPaceStyle(usage lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().Background(overPaceColor(usage))
+}
+
+// overPaceColor returns a color one step more alarming than the usage color.
+func overPaceColor(c lipgloss.Color) lipgloss.Color {
+	switch c {
+	case green:
+		return yellow
+	case yellow:
+		return red
+	case red:
+		return brightRed
+	default:
+		return red
+	}
+}
 
 var modelBarEmptyStyle = lipgloss.NewStyle().Foreground(gray)
 
