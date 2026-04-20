@@ -2,6 +2,7 @@ package tui
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	"github.com/lwlee2608/tokentop/internal/config"
 	"github.com/lwlee2608/tokentop/pkg/codex"
 	"github.com/muesli/termenv"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var updateGolden = flag.Bool("update", false, "update golden files")
@@ -24,7 +27,7 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 		width: 80,
 		codexUIConfig: config.CodexUIConfig{
 			Compact:    true,
-			CodeReview: true,
+			CodeReview: false,
 			PaceTick:   true,
 		},
 		codexUsage: &codex.Usage{
@@ -56,35 +59,26 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 	}
 
 	got := m.codexSection()
+	fmt.Print(got)
 	goldenPath := filepath.Join("testdata", "codex_compact.golden")
 
 	if *updateGolden {
-		if err := os.WriteFile(goldenPath, []byte(got), 0644); err != nil {
-			t.Fatalf("write golden: %v", err)
-		}
+		require.NoError(t, os.WriteFile(goldenPath, []byte(got), 0644), "write golden")
 	}
 
 	want, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden: %v", err)
-	}
-	if got != string(want) {
-		t.Errorf("codex section mismatch\n--- got ---\n%s\n--- want ---\n%s", got, want)
-	}
+	require.NoError(t, err, "read golden")
+	assert.Equal(t, string(want), got, "codex section mismatch")
 }
 
 func TestBuildBarCellsStartOfWindowMarksUsageOverPace(t *testing.T) {
 	cells := buildBarCells(50, 0, 10)
 
 	for i := 0; i < 5; i++ {
-		if cells[i] != barCellOverPace {
-			t.Fatalf("cell %d = %v, want %v", i, cells[i], barCellOverPace)
-		}
+		assert.Equalf(t, barCellOverPace, cells[i], "cell %d", i)
 	}
 	for i := 5; i < len(cells); i++ {
-		if cells[i] != barCellEmpty {
-			t.Fatalf("cell %d = %v, want %v", i, cells[i], barCellEmpty)
-		}
+		assert.Equalf(t, barCellEmpty, cells[i], "cell %d", i)
 	}
 }
 
@@ -92,19 +86,13 @@ func TestBuildBarCellsWithoutPaceDataUsesNormalFill(t *testing.T) {
 	cells := buildBarCells(50, -1, 10)
 
 	for i := 0; i < 5; i++ {
-		if cells[i] != barCellFilled {
-			t.Fatalf("cell %d = %v, want %v", i, cells[i], barCellFilled)
-		}
+		assert.Equalf(t, barCellFilled, cells[i], "cell %d", i)
 	}
 	for i := 5; i < len(cells); i++ {
-		if cells[i] != barCellEmpty {
-			t.Fatalf("cell %d = %v, want %v", i, cells[i], barCellEmpty)
-		}
+		assert.Equalf(t, barCellEmpty, cells[i], "cell %d", i)
 	}
 }
 
 func TestOverPaceColorKeepsRedBarsDistinct(t *testing.T) {
-	if got := overPaceColor(red); got != brightRed {
-		t.Fatalf("overPaceColor(red) = %q, want %q", got, brightRed)
-	}
+	assert.Equal(t, brightRed, overPaceColor(red))
 }
