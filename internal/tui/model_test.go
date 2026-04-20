@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lwlee2608/tokentop/internal/config"
+	"github.com/lwlee2608/tokentop/pkg/claude"
 	"github.com/lwlee2608/tokentop/pkg/codex"
 	"github.com/muesli/termenv"
 	"github.com/stretchr/testify/assert"
@@ -69,6 +70,43 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 	want, err := os.ReadFile(goldenPath)
 	require.NoError(t, err, "read golden")
 	assert.Equal(t, string(want), got, "codex section mismatch")
+}
+
+func TestClaudeSectionRenderSnapshot(t *testing.T) {
+	lipgloss.SetColorProfile(termenv.TrueColor)
+
+	now := time.Now()
+	m := Model{
+		width: 80,
+		claudeUIConfig: config.ClaudeUIConfig{
+			Compact:  true,
+			PaceTick: true,
+		},
+		claudeUsage: &claude.Usage{
+			SubscriptionType: "Pro",
+			RateLimitTier:    "standard",
+			SessionLimit: &claude.RateWindow{
+				Utilization: 0.42,
+				ResetAt:     now.Add(2 * time.Hour),
+			},
+			WeeklyLimit: &claude.RateWindow{
+				Utilization: 0.75,
+				ResetAt:     now.Add(4 * 24 * time.Hour),
+			},
+		},
+	}
+
+	got := m.claudeSection()
+	fmt.Print(got)
+	goldenPath := filepath.Join("testdata", "claude_compact.golden")
+
+	if *updateGolden {
+		require.NoError(t, os.WriteFile(goldenPath, []byte(got), 0644), "write golden")
+	}
+
+	want, err := os.ReadFile(goldenPath)
+	require.NoError(t, err, "read golden")
+	assert.Equal(t, string(want), got, "claude section mismatch")
 }
 
 func TestBuildBarCellsStartOfWindowMarksUsageOverPace(t *testing.T) {
