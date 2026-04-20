@@ -2,7 +2,6 @@ package tui
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,7 +59,7 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 	}
 
 	got := m.codexSection()
-	fmt.Print(got)
+	// fmt.Print(got)
 	goldenPath := filepath.Join("testdata", "codex_compact.golden")
 
 	if *updateGolden {
@@ -97,7 +96,7 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 	}
 
 	got := m.claudeSection()
-	fmt.Print(got)
+	// fmt.Print(got)
 	goldenPath := filepath.Join("testdata", "claude_compact.golden")
 
 	if *updateGolden {
