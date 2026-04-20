@@ -74,7 +74,7 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 func TestBuildBarCellsStartOfWindowMarksUsageOverPace(t *testing.T) {
 	cells := buildBarCells(50, 0, 10)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		assert.Equalf(t, barCellOverPace, cells[i], "cell %d", i)
 	}
 	for i := 5; i < len(cells); i++ {
@@ -85,7 +85,7 @@ func TestBuildBarCellsStartOfWindowMarksUsageOverPace(t *testing.T) {
 func TestBuildBarCellsWithoutPaceDataUsesNormalFill(t *testing.T) {
 	cells := buildBarCells(50, -1, 10)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		assert.Equalf(t, barCellFilled, cells[i], "cell %d", i)
 	}
 	for i := 5; i < len(cells); i++ {
