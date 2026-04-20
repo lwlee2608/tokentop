@@ -12,7 +12,7 @@ import (
 
 func (m Model) codexElapsedPercent(w *codex.UsageWindow) float64 {
 	if !m.codexUIConfig.PaceTick || w == nil || w.LimitWindowSeconds <= 0 {
-		return 0
+		return -1
 	}
 	return elapsedPercent(w.ResetTime(), time.Duration(w.LimitWindowSeconds)*time.Second)
 }

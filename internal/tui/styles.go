@@ -5,16 +5,17 @@ import "github.com/charmbracelet/lipgloss"
 const barPadding = 12
 
 var (
-	green  = lipgloss.Color("2")
-	cyan   = lipgloss.Color("6")
-	blue   = lipgloss.Color("12")
-	orange = lipgloss.Color("208")
-	pink   = lipgloss.Color("205")
-	yellow = lipgloss.Color("3")
-	red    = lipgloss.Color("1")
-	white  = lipgloss.Color("15")
-	gray   = lipgloss.Color("237")
-	slack  = lipgloss.Color("244")
+	green     = lipgloss.Color("2")
+	cyan      = lipgloss.Color("6")
+	blue      = lipgloss.Color("12")
+	orange    = lipgloss.Color("208")
+	pink      = lipgloss.Color("205")
+	yellow    = lipgloss.Color("3")
+	red       = lipgloss.Color("1")
+	brightRed = lipgloss.Color("9")
+	white     = lipgloss.Color("15")
+	gray      = lipgloss.Color("237")
+	slack     = lipgloss.Color("244")
 
 	headerStyle  = lipgloss.NewStyle().Bold(true).Foreground(white)
 	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(white).Underline(true)
@@ -53,6 +54,8 @@ func overPaceColor(c lipgloss.Color) lipgloss.Color {
 		return yellow
 	case yellow:
 		return red
+	case red:
+		return brightRed
 	default:
 		return red
 	}

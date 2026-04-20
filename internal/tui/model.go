@@ -269,24 +269,62 @@ func elapsedCells(elapsedPercent float64, barWidth int) int {
 	return n
 }
 
+type barCellState uint8
+
+const (
+	barCellEmpty barCellState = iota
+	barCellSlack
+	barCellFilled
+	barCellOverPace
+)
+
+func buildBarCells(usedPercent, elapsedPercent float64, barWidth int) []barCellState {
+	if barWidth <= 0 {
+		return nil
+	}
+
+	used := math.Min(usedPercent, 100)
+	filledCount := int(math.Round(used / 100 * float64(barWidth)))
+
+	showElapsed := elapsedPercent >= 0
+	eCount := 0
+	if showElapsed {
+		eCount = elapsedCells(elapsedPercent, barWidth)
+	}
+
+	cells := make([]barCellState, barWidth)
+	for i := 0; i < barWidth; i++ {
+		switch {
+		case i < filledCount && (!showElapsed || i < eCount):
+			cells[i] = barCellFilled
+		case i < filledCount:
+			cells[i] = barCellOverPace
+		case showElapsed && i < eCount:
+			cells[i] = barCellSlack
+		default:
+			cells[i] = barCellEmpty
+		}
+	}
+	return cells
+}
+
 func renderBar(label string, usedPercent, elapsedPercent float64, barWidth int, resetInfo string) string {
 	used := math.Min(usedPercent, 100)
 	remaining := 100 - used
 
-	filledCount := int(math.Round(used / 100 * float64(barWidth)))
 	c := usageColor(used)
-	eCount := elapsedCells(elapsedPercent, barWidth)
+	cells := buildBarCells(usedPercent, elapsedPercent, barWidth)
 
 	var bar strings.Builder
-	for i := 0; i < barWidth; i++ {
-		switch {
-		case i < filledCount && (eCount == 0 || i < eCount):
+	for _, cell := range cells {
+		switch cell {
+		case barCellFilled:
 			bar.WriteString(barFilledStyle(c).Render(" "))
-		case i < filledCount:
+		case barCellOverPace:
 			bar.WriteString(barOverPaceStyle(c).Render(" "))
-		case i < eCount:
+		case barCellSlack:
 			bar.WriteString(barSlackStyle.Render(" "))
-		default:
+		case barCellEmpty:
 			bar.WriteString(barEmptyStyle.Render(" "))
 		}
 	}
@@ -312,20 +350,19 @@ func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidt
 	compactBarWidth := barWidth - overhead
 	compactBarWidth = max(compactBarWidth, 10)
 
-	filledCount := int(math.Round(used / 100 * float64(compactBarWidth)))
 	c := usageColor(used)
-	eCount := elapsedCells(elapsedPercent, compactBarWidth)
+	cells := buildBarCells(usedPercent, elapsedPercent, compactBarWidth)
 
 	var bar strings.Builder
-	for i := 0; i < compactBarWidth; i++ {
-		switch {
-		case i < filledCount && (eCount == 0 || i < eCount):
+	for _, cell := range cells {
+		switch cell {
+		case barCellFilled:
 			bar.WriteString(compactBarFilledStyle(c).Render("▄"))
-		case i < filledCount:
+		case barCellOverPace:
 			bar.WriteString(compactBarOverPaceStyle(c).Render("▄"))
-		case i < eCount:
+		case barCellSlack:
 			bar.WriteString(compactBarSlackStyle.Render("▄"))
-		default:
+		case barCellEmpty:
 			bar.WriteString(compactBarEmptyStyle.Render("▄"))
 		}
 	}
@@ -363,7 +400,7 @@ func countdown() tea.Cmd {
 
 func elapsedPercent(resetAt time.Time, windowDuration time.Duration) float64 {
 	if resetAt.IsZero() || windowDuration <= 0 {
-		return 0
+		return -1
 	}
 	remaining := time.Until(resetAt)
 	if remaining <= 0 {

@@ -17,7 +17,7 @@ const (
 
 func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) float64 {
 	if !m.claudeUIConfig.PaceTick {
-		return 0
+		return -1
 	}
 	return elapsedPercent(resetAt, window)
 }

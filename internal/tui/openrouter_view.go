@@ -42,7 +42,7 @@ func (m Model) orSection() string {
 	if u.Key.Limit > 0 {
 		b.WriteByte('\n')
 		usedPct := (u.Key.Limit - u.Key.LimitRemaining) / u.Key.Limit * 100
-		b.WriteString(renderBar("Credit Limit", usedPct, 0, bw,
+		b.WriteString(renderBar("Credit Limit", usedPct, -1, bw,
 			fmt.Sprintf("$%.4f remaining (resets %s)", u.Key.LimitRemaining, u.Key.LimitReset),
 		))
 		b.WriteByte('\n')
