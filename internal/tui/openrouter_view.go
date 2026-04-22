@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 	"strings"
@@ -28,7 +29,10 @@ func parseMetric(s string) orMetric {
 		return metricRequests
 	case "tokens", "token":
 		return metricTokens
+	case "", "spend":
+		return metricSpend
 	default:
+		slog.Warn("unknown openrouter_ui.metric, falling back to spend", "value", s)
 		return metricSpend
 	}
 }
@@ -97,7 +101,6 @@ func metricAxisLabel(v float64, metric orMetric) string {
 	}
 }
 
-// formatMetricColumn renders the primary value column in Top Models (width 8).
 func formatMetricColumn(v float64, metric orMetric) string {
 	switch metric {
 	case metricRequests:
@@ -109,7 +112,6 @@ func formatMetricColumn(v float64, metric orMetric) string {
 	}
 }
 
-// formatMetricSecondary renders the trailing context column in Top Models (width 8).
 func formatMetricSecondary(mu openrouter.ModelUsage, metric orMetric) string {
 	if metric == metricSpend {
 		return fmt.Sprintf("%4.0f req", mu.Requests)
@@ -207,7 +209,7 @@ const (
 	chartMaxHeight = 12
 	chartMinDays   = 7
 	chartTopModels = 6
-	chartGutter    = 9 // "  %5.0f │" width
+	chartGutter    = 10 // "  %6s │" width
 )
 
 func (m Model) renderORDailyChart(u *openrouter.Usage) string {
@@ -264,8 +266,8 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 
 	// Pre-compute each column as an array of color indices (bottom to top)
 	const (
-		gutterPad  = "        " // 8 spaces, must match gutter visible width
-		gutter     = "  %5s │"
+		gutterPad  = "         " // 9 spaces, must match gutter visible width
+		gutter     = "  %6s │"
 		gutterBlnk = gutterPad + "│"
 		emptyCell  = -1
 	)

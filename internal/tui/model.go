@@ -251,8 +251,8 @@ func (m Model) footer() string {
 		remaining = 0
 	}
 	var orHint string
-	if m.orAuth != nil {
-		orHint = fmt.Sprintf(" | m: %s", m.orMetric)
+	if m.orAuth != nil && (m.orUIConfig.DailySpend || m.orUIConfig.TopModels) {
+		orHint = fmt.Sprintf(" | metric: %s (m)", m.orMetric)
 	}
 	info := fmt.Sprintf(" refresh: %ds | updated: %s | r to refresh%s | q to quit", int(remaining.Seconds()), ts, orHint)
 	return dimStyle.Render(info)
