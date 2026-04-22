@@ -14,9 +14,11 @@ const (
 )
 
 func (m Model) orSection() string {
+	return sectionBox("OpenRouter", m.orSectionBody(), m.width)
+}
+
+func (m Model) orSectionBody() string {
 	var b strings.Builder
-	b.WriteString(sectionStyle.Render(" OpenRouter"))
-	b.WriteByte('\n')
 
 	if m.orUsage == nil && m.orErr == "" {
 		b.WriteString(dimStyle.Render("  Loading..."))
@@ -99,8 +101,9 @@ func renderORSummary(u *openrouter.Usage) string {
 
 const (
 	chartMaxHeight = 12
-	chartMaxDays   = 30
+	chartMinDays   = 7
 	chartTopModels = 6
+	chartGutter    = 9 // "  %5.0f │" width
 )
 
 func (m Model) renderORDailyChart(u *openrouter.Usage) string {
@@ -109,8 +112,22 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 	}
 
 	days := u.DailyActivity.Days
-	if len(days) > chartMaxDays {
-		days = days[len(days)-chartMaxDays:]
+	avail := m.width - 2 - chartGutter
+	if avail < chartMinDays*2 {
+		avail = chartMinDays * 2
+	}
+	maxDays := avail / 2
+	if len(days) > maxDays {
+		days = days[len(days)-maxDays:]
+	}
+	colWidth := 2
+	if len(days) > 0 {
+		if cw := avail / len(days); cw > colWidth {
+			colWidth = cw
+		}
+		if colWidth > 4 {
+			colWidth = 4
+		}
 	}
 
 	// Find top models across all days by total spend
@@ -139,13 +156,14 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 
 	// Pre-compute each column as an array of color indices (bottom to top)
 	const (
-		colWidth   = 2
 		gutterPad  = "        " // 8 spaces, must match gutter visible width
 		gutter     = "  %5.0f │"
 		gutterBlnk = gutterPad + "│"
 		emptyCell  = -1
 	)
 	height := chartMaxHeight
+	filledGlyph := "▐" + strings.Repeat("█", colWidth-1)
+	emptyGlyph := strings.Repeat(" ", colWidth)
 
 	othersColorIdx := len(topModels) % len(modelBarColors)
 
@@ -247,16 +265,16 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 		cellRow := row - 1 // row 1 = index 0 (bottom)
 		for _, col := range columns {
 			if col[cellRow] != emptyCell {
-				b.WriteString(modelBarFilledStyle(col[cellRow]).Render("▐█"))
+				b.WriteString(modelBarFilledStyle(col[cellRow]).Render(filledGlyph))
 			} else {
-				b.WriteString("  ")
+				b.WriteString(emptyGlyph)
 			}
 		}
 		b.WriteByte('\n')
 	}
 
 	// X-axis (matches gutter width)
-	b.WriteString(dimStyle.Render(gutterPad + "└" + strings.Repeat("──", len(days))))
+	b.WriteString(dimStyle.Render(gutterPad + "└" + strings.Repeat(strings.Repeat("─", colWidth), len(days))))
 	b.WriteByte('\n')
 
 	// Date labels — place at first, middle, last positions
