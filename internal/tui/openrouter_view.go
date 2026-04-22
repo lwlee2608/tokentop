@@ -106,27 +106,28 @@ const (
 	chartGutter    = 9 // "  %5.0f │" width
 )
 
-// chartMaxDays returns how many day columns fit in the current terminal width,
-// accounting for border (2) and gutter (chartGutter). Columns are 2 cells each.
-func (m Model) chartMaxDays() int {
-	if m.width <= 0 {
-		return 30
-	}
-	avail := (m.width - 2 - chartGutter) / 2
-	if avail < chartMinDays {
-		return chartMinDays
-	}
-	return avail
-}
-
 func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 	if u.DailyActivity == nil || len(u.DailyActivity.Days) == 0 {
 		return ""
 	}
 
 	days := u.DailyActivity.Days
-	if maxDays := m.chartMaxDays(); len(days) > maxDays {
+	avail := m.width - 2 - chartGutter
+	if avail < chartMinDays*2 {
+		avail = chartMinDays * 2
+	}
+	maxDays := avail / 2
+	if len(days) > maxDays {
 		days = days[len(days)-maxDays:]
+	}
+	colWidth := 2
+	if len(days) > 0 {
+		if cw := avail / len(days); cw > colWidth {
+			colWidth = cw
+		}
+		if colWidth > 4 {
+			colWidth = 4
+		}
 	}
 
 	// Find top models across all days by total spend
@@ -155,13 +156,14 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 
 	// Pre-compute each column as an array of color indices (bottom to top)
 	const (
-		colWidth   = 2
 		gutterPad  = "        " // 8 spaces, must match gutter visible width
 		gutter     = "  %5.0f │"
 		gutterBlnk = gutterPad + "│"
 		emptyCell  = -1
 	)
 	height := chartMaxHeight
+	filledGlyph := "▐" + strings.Repeat("█", colWidth-1)
+	emptyGlyph := strings.Repeat(" ", colWidth)
 
 	othersColorIdx := len(topModels) % len(modelBarColors)
 
@@ -263,16 +265,16 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 		cellRow := row - 1 // row 1 = index 0 (bottom)
 		for _, col := range columns {
 			if col[cellRow] != emptyCell {
-				b.WriteString(modelBarFilledStyle(col[cellRow]).Render("▐█"))
+				b.WriteString(modelBarFilledStyle(col[cellRow]).Render(filledGlyph))
 			} else {
-				b.WriteString("  ")
+				b.WriteString(emptyGlyph)
 			}
 		}
 		b.WriteByte('\n')
 	}
 
 	// X-axis (matches gutter width)
-	b.WriteString(dimStyle.Render(gutterPad + "└" + strings.Repeat("──", len(days))))
+	b.WriteString(dimStyle.Render(gutterPad + "└" + strings.Repeat(strings.Repeat("─", colWidth), len(days))))
 	b.WriteByte('\n')
 
 	// Date labels — place at first, middle, last positions
