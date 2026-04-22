@@ -14,9 +14,11 @@ const (
 )
 
 func (m Model) orSection() string {
+	return sectionBox("OpenRouter", m.orSectionBody())
+}
+
+func (m Model) orSectionBody() string {
 	var b strings.Builder
-	b.WriteString(sectionStyle.Render(" OpenRouter"))
-	b.WriteByte('\n')
 
 	if m.orUsage == nil && m.orErr == "" {
 		b.WriteString(dimStyle.Render("  Loading..."))

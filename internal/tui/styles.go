@@ -22,10 +22,9 @@ var (
 	gray      = lipgloss.Color("237")
 	slack     = lipgloss.Color("244")
 
-	headerStyle  = lipgloss.NewStyle().Bold(true).Foreground(white)
-	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(white).Underline(true)
-	dimStyle     = lipgloss.NewStyle().Faint(true)
-	labelStyle   = lipgloss.NewStyle().Bold(true).Foreground(white)
+	headerStyle = lipgloss.NewStyle().Bold(true).Foreground(white)
+	dimStyle    = lipgloss.NewStyle().Faint(true)
+	labelStyle  = lipgloss.NewStyle().Bold(true).Foreground(white)
 
 	sectionBorderStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(slack)
 )
@@ -78,6 +77,12 @@ func modelBarFilledStyle(i int) lipgloss.Style {
 
 func pctStyle(c lipgloss.Color) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(c)
+}
+
+// sectionBox wraps body in the rounded section border with title spliced into the top edge.
+func sectionBox(title, body string) string {
+	box := sectionBorderStyle.Render(strings.TrimRight(body, "\n"))
+	return injectBorderTitle(box, labelStyle.Render(" "+title+" ")) + "\n"
 }
 
 // injectBorderTitle splices a title onto the top edge of a rendered rounded-border box,

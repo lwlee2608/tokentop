@@ -18,9 +18,11 @@ func (m Model) codexElapsedPercent(w *codex.UsageWindow) float64 {
 }
 
 func (m Model) codexSection() string {
+	return sectionBox("Codex", m.codexSectionBody())
+}
+
+func (m Model) codexSectionBody() string {
 	var b strings.Builder
-	b.WriteString(sectionStyle.Render(" Codex"))
-	b.WriteByte('\n')
 
 	if m.codexUsage == nil && m.codexErr == "" {
 		b.WriteString(dimStyle.Render("  Loading..."))
