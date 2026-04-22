@@ -8,9 +8,7 @@
 
 A terminal dashboard for monitoring your API usage in real time. Supports [OpenAI Codex](https://chatgpt.com/codex) and [OpenRouter](https://openrouter.ai/).
 
-![OpenRouter](img/openrouter.jpg)
-
-![Codex](img/codex.jpg)
+![tokentop](img/tokentop2.jpg)
 
 ## Install
 
