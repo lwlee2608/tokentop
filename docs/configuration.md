@@ -39,6 +39,7 @@ openrouter_ui:
   daily_spend: true
   top_models: true
   api_keys: false
+  metric: spend  # spend | requests | tokens
 ```
 
 ## Fields
@@ -81,7 +82,7 @@ CLI flags can override the providers block for a single run — see [Keybindings
 
 ### `openrouter_ui`
 
-All four toggles only apply when the configured `OPENROUTER_API_KEY` is a **management key**. With a standard key, TokenTop renders the credit-limit bar and a fixed daily/weekly/monthly usage line regardless of these settings.
+These settings only apply when the configured `OPENROUTER_API_KEY` is a **management key**. With a standard key, TokenTop renders the credit-limit bar and a fixed daily/weekly/monthly usage line regardless of these settings.
 
 | Key           | Default | Description |
 |---------------|---------|-------------|
@@ -89,6 +90,7 @@ All four toggles only apply when the configured `OPENROUTER_API_KEY` is a **mana
 | `daily_spend` | `true`  | Show the last 30 days of spend as a chart. |
 | `top_models`  | `true`  | Show the top models by spend. |
 | `api_keys`    | `false` | List every key on the account with per-key spend. |
+| `metric`      | `spend` | Initial metric for daily spend and top models charts. One of `spend`, `requests`, `tokens`. Cycle at runtime with `m`. |
 
 ## Examples
 
