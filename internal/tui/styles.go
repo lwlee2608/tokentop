@@ -80,9 +80,55 @@ func pctStyle(c lipgloss.Color) lipgloss.Style {
 }
 
 // sectionBox wraps body in the rounded section border with title spliced into the top edge.
-func sectionBox(title, body string) string {
+// Body lines wider than width-2 are clipped so the right border stays visible.
+func sectionBox(title, body string, width int) string {
+	body = clipLines(body, width-2)
 	box := sectionBorderStyle.Render(strings.TrimRight(body, "\n"))
 	return injectBorderTitle(box, labelStyle.Render(" "+title+" ")) + "\n"
+}
+
+// clipLines truncates each line of s to at most maxW visible cells, preserving ANSI
+// escape sequences (they have zero visible width) and closing any open style at the cut.
+func clipLines(s string, maxW int) string {
+	if maxW <= 0 {
+		return s
+	}
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if lipgloss.Width(line) > maxW {
+			lines[i] = clipLine(line, maxW)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func clipLine(line string, maxW int) string {
+	var b strings.Builder
+	visible := 0
+	for i := 0; i < len(line); {
+		if line[i] == 0x1b && i+1 < len(line) && line[i+1] == '[' {
+			j := i + 2
+			for j < len(line) && !(line[j] >= '@' && line[j] <= '~') {
+				j++
+			}
+			if j < len(line) {
+				j++
+			}
+			b.WriteString(line[i:j])
+			i = j
+			continue
+		}
+		if visible >= maxW {
+			break
+		}
+		r, size := utf8.DecodeRuneInString(line[i:])
+		_ = r
+		b.WriteString(line[i : i+size])
+		i += size
+		visible++
+	}
+	b.WriteString("\x1b[0m")
+	return b.String()
 }
 
 // injectBorderTitle splices a title onto the top edge of a rendered rounded-border box,

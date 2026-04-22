@@ -18,7 +18,7 @@ func (m Model) codexElapsedPercent(w *codex.UsageWindow) float64 {
 }
 
 func (m Model) codexSection() string {
-	return sectionBox("Codex", m.codexSectionBody())
+	return sectionBox("Codex", m.codexSectionBody(), m.width)
 }
 
 func (m Model) codexSectionBody() string {

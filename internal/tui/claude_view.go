@@ -23,7 +23,7 @@ func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) flo
 }
 
 func (m Model) claudeSection() string {
-	return sectionBox("Claude", m.claudeSectionBody())
+	return sectionBox("Claude", m.claudeSectionBody(), m.width)
 }
 
 func (m Model) claudeSectionBody() string {

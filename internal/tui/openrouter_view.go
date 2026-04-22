@@ -14,7 +14,7 @@ const (
 )
 
 func (m Model) orSection() string {
-	return sectionBox("OpenRouter", m.orSectionBody())
+	return sectionBox("OpenRouter", m.orSectionBody(), m.width)
 }
 
 func (m Model) orSectionBody() string {
