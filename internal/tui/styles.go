@@ -22,9 +22,8 @@ var (
 	gray      = lipgloss.Color("237")
 	slack     = lipgloss.Color("244")
 
-	headerStyle = lipgloss.NewStyle().Bold(true).Foreground(white)
-	dimStyle    = lipgloss.NewStyle().Faint(true)
-	labelStyle  = lipgloss.NewStyle().Bold(true).Foreground(white)
+	dimStyle   = lipgloss.NewStyle().Faint(true)
+	labelStyle = lipgloss.NewStyle().Bold(true).Foreground(white)
 
 	sectionBorderStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(slack)
 )

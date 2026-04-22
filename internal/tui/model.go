@@ -219,16 +219,6 @@ func (m Model) barWidth() int {
 func (m Model) View() string {
 	var b strings.Builder
 
-	// Header
-	label := fmt.Sprintf(" tokentop %s ", m.version)
-	sideLen := (m.width - len(label) - 2) / 2
-	sideLen = max(sideLen, 0)
-	rightLen := m.width - 2 - sideLen - len(label)
-	rightLen = max(rightLen, 0)
-	title := "┌" + strings.Repeat("─", sideLen) + label + strings.Repeat("─", rightLen) + "┐"
-	b.WriteString(headerStyle.Render(title))
-	b.WriteByte('\n')
-
 	if m.claudeAuth != nil {
 		b.WriteString(m.claudeSection())
 	}
@@ -255,7 +245,7 @@ func (m Model) footer() string {
 		remaining = 0
 	}
 	info := fmt.Sprintf(" refresh: %ds | updated: %s | r to refresh | q to quit", int(remaining.Seconds()), ts)
-	return dimStyle.Render(info) + "\n" + dimStyle.Render(strings.Repeat("─", m.width))
+	return dimStyle.Render(info)
 }
 
 func elapsedCells(elapsedPercent float64, barWidth int) int {
