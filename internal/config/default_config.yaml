@@ -24,4 +24,5 @@ openrouter_ui:
   daily_spend: true
   top_models: true
   api_keys: false
+  metric: spend  # spend | requests | tokens
 

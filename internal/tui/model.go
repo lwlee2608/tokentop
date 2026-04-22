@@ -62,6 +62,7 @@ type Model struct {
 	orUsage   *openrouter.Usage
 	orErr     string
 	orRetries int
+	orMetric  orMetric
 
 	claudeAuth    *claude.Auth
 	claudeUsage   *claude.Usage
@@ -77,6 +78,7 @@ func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth
 		codexUIConfig:  codexUIConfig,
 		claudeUIConfig: claudeUIConfig,
 		orUIConfig:     orUIConfig,
+		orMetric:       parseMetric(orUIConfig.Metric),
 		version:        version,
 		nextRefresh:    time.Now().Add(refreshInterval),
 	}
@@ -107,6 +109,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.String() == "r" {
 			return m.refresh()
+		}
+		if msg.String() == "m" {
+			m.orMetric = m.orMetric.next()
+			return m, nil
 		}
 
 	case countdownMsg:
@@ -244,7 +250,11 @@ func (m Model) footer() string {
 	if remaining < 0 {
 		remaining = 0
 	}
-	info := fmt.Sprintf(" refresh: %ds | updated: %s | r to refresh | q to quit", int(remaining.Seconds()), ts)
+	var orHint string
+	if m.orAuth != nil && (m.orUIConfig.DailySpend || m.orUIConfig.TopModels) {
+		orHint = fmt.Sprintf(" | metric: %s (m)", m.orMetric)
+	}
+	info := fmt.Sprintf(" refresh: %ds | updated: %s | r to refresh%s | q to quit", int(remaining.Seconds()), ts, orHint)
 	return dimStyle.Render(info)
 }
 

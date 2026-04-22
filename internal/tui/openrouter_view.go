@@ -2,7 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/lwlee2608/tokentop/pkg/openrouter"
@@ -12,6 +14,110 @@ const (
 	maxModels = 7
 	maxKeys   = 10
 )
+
+type orMetric string
+
+const (
+	metricSpend    orMetric = "spend"
+	metricRequests orMetric = "requests"
+	metricTokens   orMetric = "tokens"
+)
+
+func parseMetric(s string) orMetric {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "requests", "request", "req":
+		return metricRequests
+	case "tokens", "token":
+		return metricTokens
+	case "", "spend":
+		return metricSpend
+	default:
+		slog.Warn("unknown openrouter_ui.metric, falling back to spend", "value", s)
+		return metricSpend
+	}
+}
+
+func (m orMetric) next() orMetric {
+	switch m {
+	case metricSpend:
+		return metricRequests
+	case metricRequests:
+		return metricTokens
+	default:
+		return metricSpend
+	}
+}
+
+func (m orMetric) chartTitle() string {
+	switch m {
+	case metricRequests:
+		return "Daily Requests"
+	case metricTokens:
+		return "Daily Tokens"
+	default:
+		return "Daily Spend"
+	}
+}
+
+func (m orMetric) modelsTitle() string {
+	switch m {
+	case metricRequests:
+		return "Top Models (by requests)"
+	case metricTokens:
+		return "Top Models (by tokens)"
+	default:
+		return "Top Models"
+	}
+}
+
+func modelMetricValue(mu openrouter.ModelUsage, metric orMetric) float64 {
+	switch metric {
+	case metricRequests:
+		return mu.Requests
+	case metricTokens:
+		return mu.PromptTokens + mu.CompletionTokens + mu.ReasoningTokens
+	default:
+		return mu.Spend
+	}
+}
+
+func dayMetricTotal(day openrouter.DailyUsage, metric orMetric) float64 {
+	if metric == metricSpend {
+		return day.Total
+	}
+	var total float64
+	for _, m := range day.Models {
+		total += modelMetricValue(m, metric)
+	}
+	return total
+}
+
+func metricAxisLabel(v float64, metric orMetric) string {
+	switch metric {
+	case metricTokens:
+		return formatTokens(v)
+	default:
+		return fmt.Sprintf("%.0f", v)
+	}
+}
+
+func formatMetricColumn(v float64, metric orMetric) string {
+	switch metric {
+	case metricRequests:
+		return fmt.Sprintf("%8.0f", v)
+	case metricTokens:
+		return fmt.Sprintf("%8s", formatTokens(v))
+	default:
+		return fmt.Sprintf("$%7.2f", v)
+	}
+}
+
+func formatMetricSecondary(mu openrouter.ModelUsage, metric orMetric) string {
+	if metric == metricSpend {
+		return fmt.Sprintf("%4.0f req", mu.Requests)
+	}
+	return fmt.Sprintf("$%7.2f", mu.Spend)
+}
 
 func (m Model) orSection() string {
 	return sectionBox("OpenRouter", m.orSectionBody(), m.width)
@@ -103,7 +209,7 @@ const (
 	chartMaxHeight = 12
 	chartMinDays   = 7
 	chartTopModels = 6
-	chartGutter    = 9 // "  %5.0f │" width
+	chartGutter    = 10 // "  %6s │" width
 )
 
 func (m Model) renderORDailyChart(u *openrouter.Usage) string {
@@ -111,6 +217,7 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 		return ""
 	}
 
+	metric := m.orMetric
 	days := u.DailyActivity.Days
 	avail := m.width - 2 - chartGutter
 	if avail < chartMinDays*2 {
@@ -130,24 +237,27 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 		}
 	}
 
-	// Find top models across all days by total spend
-	modelSpend := make(map[string]float64)
+	// Find top models across all days by selected metric
+	modelTotals := make(map[string]float64)
 	for _, day := range days {
 		for _, model := range day.Models {
-			modelSpend[model.Model] += model.Spend
+			modelTotals[model.Model] += modelMetricValue(model, metric)
 		}
 	}
-	topModels := topNModels(modelSpend, chartTopModels)
+	topModels := topNModels(modelTotals, chartTopModels)
 	topSet := make(map[string]bool, len(topModels))
-	for _, m := range topModels {
-		topSet[m] = true
+	for _, tm := range topModels {
+		topSet[tm] = true
 	}
 
-	// Find max daily total for scaling
+	// Pre-compute per-day totals and find max for scaling
+	dayTotals := make([]float64, len(days))
 	var maxTotal float64
-	for _, day := range days {
-		if day.Total > maxTotal {
-			maxTotal = day.Total
+	for i, day := range days {
+		t := dayMetricTotal(day, metric)
+		dayTotals[i] = t
+		if t > maxTotal {
+			maxTotal = t
 		}
 	}
 	if maxTotal == 0 {
@@ -156,8 +266,8 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 
 	// Pre-compute each column as an array of color indices (bottom to top)
 	const (
-		gutterPad  = "        " // 8 spaces, must match gutter visible width
-		gutter     = "  %5.0f │"
+		gutterPad  = "         " // 9 spaces, must match gutter visible width
+		gutter     = "  %6s │"
 		gutterBlnk = gutterPad + "│"
 		emptyCell  = -1
 	)
@@ -174,37 +284,39 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 		for r := range col {
 			col[r] = emptyCell
 		}
-		if day.Total <= 0 {
+		dayTotal := dayTotals[di]
+		if dayTotal <= 0 {
 			columns[di] = col
 			continue
 		}
 
-		// Gather spend per segment: top models in order, then others
+		// Gather value per segment: top models in order, then others
 		type segment struct {
 			colorIdx int
-			spend    float64
+			value    float64
 		}
 		var segments []segment
-		var othersSpend float64
-		spendByModel := make(map[string]float64)
+		var othersValue float64
+		valueByModel := make(map[string]float64)
 		for _, model := range day.Models {
+			v := modelMetricValue(model, metric)
 			if topSet[model.Model] {
-				spendByModel[model.Model] += model.Spend
+				valueByModel[model.Model] += v
 			} else {
-				othersSpend += model.Spend
+				othersValue += v
 			}
 		}
 		for i, name := range topModels {
-			if s := spendByModel[name]; s > 0 {
+			if s := valueByModel[name]; s > 0 {
 				segments = append(segments, segment{i, s})
 			}
 		}
-		if othersSpend > 0 {
-			segments = append(segments, segment{othersColorIdx, othersSpend})
+		if othersValue > 0 {
+			segments = append(segments, segment{othersColorIdx, othersValue})
 		}
 
 		// Allocate cells using largest-remainder method
-		totalCells := int(math.Round(day.Total / maxTotal * float64(height)))
+		totalCells := int(math.Round(dayTotal / maxTotal * float64(height)))
 		if totalCells == 0 {
 			totalCells = 1
 		}
@@ -216,7 +328,7 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 		remainders := make([]float64, len(segments))
 		allocated := 0
 		for i, seg := range segments {
-			exact := seg.spend / day.Total * float64(totalCells)
+			exact := seg.value / dayTotal * float64(totalCells)
 			cellCounts[i] = int(math.Floor(exact))
 			remainders[i] = exact - float64(cellCounts[i])
 			allocated += cellCounts[i]
@@ -247,17 +359,17 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 
 	var b strings.Builder
 	b.WriteByte('\n')
-	b.WriteString("  " + labelStyle.Render("Daily Spend") + "\n")
+	b.WriteString("  " + labelStyle.Render(metric.chartTitle()) + "\n")
 
 	// Render rows top to bottom
 	for row := height; row >= 1; row-- {
 		switch row {
 		case height:
-			b.WriteString(dimStyle.Render(fmt.Sprintf(gutter, maxTotal)))
+			b.WriteString(dimStyle.Render(fmt.Sprintf(gutter, metricAxisLabel(maxTotal, metric))))
 		case height / 2:
-			b.WriteString(dimStyle.Render(fmt.Sprintf(gutter, maxTotal/2)))
+			b.WriteString(dimStyle.Render(fmt.Sprintf(gutter, metricAxisLabel(maxTotal/2, metric))))
 		case 1:
-			b.WriteString(dimStyle.Render(fmt.Sprintf(gutter, maxTotal/float64(height))))
+			b.WriteString(dimStyle.Render(fmt.Sprintf(gutter, metricAxisLabel(maxTotal/float64(height), metric))))
 		default:
 			b.WriteString(dimStyle.Render(gutterBlnk))
 		}
@@ -363,24 +475,32 @@ func (m Model) renderORModels(u *openrouter.Usage) string {
 	if u.Activity == nil || len(u.Activity.Models) == 0 {
 		return ""
 	}
-	var b strings.Builder
-	b.WriteByte('\n')
-	b.WriteString("  " + labelStyle.Render("Top Models") + "\n")
+	metric := m.orMetric
 
-	models := u.Activity.Models
+	models := append([]openrouter.ModelUsage(nil), u.Activity.Models...)
+	if metric != metricSpend {
+		sort.Slice(models, func(i, j int) bool {
+			return modelMetricValue(models[i], metric) > modelMetricValue(models[j], metric)
+		})
+	}
 	if len(models) > maxModels {
 		models = models[:maxModels]
 	}
 
-	maxSpend := models[0].Spend
+	var b strings.Builder
+	b.WriteByte('\n')
+	b.WriteString("  " + labelStyle.Render(metric.modelsTitle()) + "\n")
+
+	maxVal := modelMetricValue(models[0], metric)
 	barWidth := m.modelBarWidth()
 	for i, model := range models {
 		label := truncate(modelShortName(model.Model), 22)
+		val := modelMetricValue(model, metric)
 		fmt.Fprintf(&b, "  %s  %s  %s  %s\n",
 			dimStyle.Render(fmt.Sprintf("%-22s", label)),
-			dimStyle.Render(fmt.Sprintf("$%7.2f", model.Spend)),
-			renderModelBar(model.Spend, maxSpend, barWidth, i),
-			dimStyle.Render(fmt.Sprintf("%4.0f req", model.Requests)),
+			dimStyle.Render(formatMetricColumn(val, metric)),
+			renderModelBar(val, maxVal, barWidth, i),
+			dimStyle.Render(formatMetricSecondary(model, metric)),
 		)
 	}
 	return b.String()

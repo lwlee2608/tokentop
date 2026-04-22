@@ -2,11 +2,14 @@
 
 TokenTop is read-only and has a tiny keymap.
 
-| Key      | Action              |
-|----------|---------------------|
-| `r`      | Refresh immediately |
-| `q`      | Quit                |
-| `Ctrl+C` | Quit                |
+| Key      | Action                                                 |
+|----------|--------------------------------------------------------|
+| `r`      | Refresh immediately                                    |
+| `m`      | Cycle OpenRouter chart metric (spend → requests → tokens) |
+| `q`      | Quit                                                   |
+| `Ctrl+C` | Quit                                                   |
+
+The default metric is configurable via `openrouter_ui.metric` in `~/.config/tokentop/config.yaml` (`spend`, `requests`, or `tokens`).
 
 ## CLI flags
 

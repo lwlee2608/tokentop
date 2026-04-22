@@ -46,10 +46,11 @@ type ClaudeUIConfig struct {
 }
 
 type OpenRouterUIConfig struct {
-	Summary    bool `mapstructure:"summary"`
-	DailySpend bool `mapstructure:"daily_spend"`
-	TopModels  bool `mapstructure:"top_models"`
-	APIKeys    bool `mapstructure:"api_keys"`
+	Summary    bool   `mapstructure:"summary"`
+	DailySpend bool   `mapstructure:"daily_spend"`
+	TopModels  bool   `mapstructure:"top_models"`
+	APIKeys    bool   `mapstructure:"api_keys"`
+	Metric     string `mapstructure:"metric"` // spend | requests | tokens
 }
 
 func Load() (*Config, error) {
@@ -77,6 +78,7 @@ func Load() (*Config, error) {
 			DailySpend: true,
 			TopModels:  true,
 			APIKeys:    true,
+			Metric:     "spend",
 		},
 	}
 
