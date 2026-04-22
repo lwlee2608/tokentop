@@ -360,7 +360,7 @@ func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidt
 	reset := fmt.Sprintf("%*s", compactResetWidth, resetInfo)
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "  %s%s  %s  %s \n",
+	fmt.Fprintf(&b, "  %s%s  %s  %s\n",
 		labelStyle.Render(label),
 		pctStyle(c).Render(fmt.Sprintf("%4.0f%%", used)),
 		bar.String(),

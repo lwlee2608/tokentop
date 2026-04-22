@@ -25,7 +25,7 @@ var (
 	dimStyle   = lipgloss.NewStyle().Faint(true)
 	labelStyle = lipgloss.NewStyle().Bold(true).Foreground(white)
 
-	sectionBorderStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(slack)
+	sectionBorderStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(slack).PaddingRight(1)
 )
 
 func barFilledStyle(c lipgloss.Color) lipgloss.Style {
@@ -79,9 +79,10 @@ func pctStyle(c lipgloss.Color) lipgloss.Style {
 }
 
 // sectionBox wraps body in the rounded section border with title spliced into the top edge.
-// Body lines wider than width-2 are clipped so the right border stays visible.
+// Body lines wider than (width - 2 borders - 1 right padding) are clipped so the right
+// border stays visible.
 func sectionBox(title, body string, width int) string {
-	body = clipLines(body, width-2)
+	body = clipLines(body, width-3)
 	box := sectionBorderStyle.Render(strings.TrimRight(body, "\n"))
 	return injectBorderTitle(box, labelStyle.Render(" "+title+" ")) + "\n"
 }
