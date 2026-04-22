@@ -101,9 +101,23 @@ func renderORSummary(u *openrouter.Usage) string {
 
 const (
 	chartMaxHeight = 12
-	chartMaxDays   = 30
+	chartMinDays   = 7
 	chartTopModels = 6
+	chartGutter    = 9 // "  %5.0f │" width
 )
+
+// chartMaxDays returns how many day columns fit in the current terminal width,
+// accounting for border (2) and gutter (chartGutter). Columns are 2 cells each.
+func (m Model) chartMaxDays() int {
+	if m.width <= 0 {
+		return 30
+	}
+	avail := (m.width - 2 - chartGutter) / 2
+	if avail < chartMinDays {
+		return chartMinDays
+	}
+	return avail
+}
 
 func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 	if u.DailyActivity == nil || len(u.DailyActivity.Days) == 0 {
@@ -111,8 +125,8 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 	}
 
 	days := u.DailyActivity.Days
-	if len(days) > chartMaxDays {
-		days = days[len(days)-chartMaxDays:]
+	if maxDays := m.chartMaxDays(); len(days) > maxDays {
+		days = days[len(days)-maxDays:]
 	}
 
 	// Find top models across all days by total spend
