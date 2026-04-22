@@ -1,6 +1,11 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
+	"unicode/utf8"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 const barPadding = 12
 
@@ -21,6 +26,8 @@ var (
 	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(white).Underline(true)
 	dimStyle     = lipgloss.NewStyle().Faint(true)
 	labelStyle   = lipgloss.NewStyle().Bold(true).Foreground(white)
+
+	sectionBorderStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(slack)
 )
 
 func barFilledStyle(c lipgloss.Color) lipgloss.Style {
@@ -71,6 +78,47 @@ func modelBarFilledStyle(i int) lipgloss.Style {
 
 func pctStyle(c lipgloss.Color) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(c)
+}
+
+// injectBorderTitle splices a title onto the top edge of a rendered rounded-border box,
+// replacing a portion of the top ─ run with `title`. Expects the top line to be a
+// single styled run: "<ansi>╭───╮<reset>".
+func injectBorderTitle(rendered, title string) string {
+	nl := strings.Index(rendered, "\n")
+	if nl == -1 {
+		return rendered
+	}
+	top, rest := rendered[:nl], rendered[nl:]
+
+	left := strings.Index(top, "╭")
+	right := strings.LastIndex(top, "╮")
+	if left == -1 || right == -1 || left >= right {
+		return rendered
+	}
+
+	ansiOpen := top[:left]
+	ansiClose := top[right+len("╮"):]
+	dashes := utf8.RuneCountInString(top[left+len("╭") : right])
+
+	const lead = 2
+	titleW := lipgloss.Width(title)
+	if dashes < lead+titleW+1 {
+		return rendered
+	}
+	trail := dashes - lead - titleW
+
+	var b strings.Builder
+	b.WriteString(ansiOpen)
+	b.WriteString("╭")
+	b.WriteString(strings.Repeat("─", lead))
+	b.WriteString(ansiClose)
+	b.WriteString(title)
+	b.WriteString(ansiOpen)
+	b.WriteString(strings.Repeat("─", trail))
+	b.WriteString("╮")
+	b.WriteString(ansiClose)
+	b.WriteString(rest)
+	return b.String()
 }
 
 func usageColor(pct float64) lipgloss.Color {

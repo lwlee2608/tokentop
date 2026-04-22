@@ -23,9 +23,12 @@ func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) flo
 }
 
 func (m Model) claudeSection() string {
+	box := sectionBorderStyle.Render(strings.TrimRight(m.claudeSectionBody(), "\n"))
+	return injectBorderTitle(box, labelStyle.Render(" Claude ")) + "\n"
+}
+
+func (m Model) claudeSectionBody() string {
 	var b strings.Builder
-	b.WriteString(sectionStyle.Render(" Claude"))
-	b.WriteByte('\n')
 
 	if m.claudeUsage == nil && m.claudeErr == "" {
 		b.WriteString(dimStyle.Render("  Loading..."))
