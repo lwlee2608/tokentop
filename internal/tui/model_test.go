@@ -36,7 +36,7 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 	now := time.Now()
 	balance := "12.34"
 	m := Model{
-		width: 80,
+		width: 85,
 		codexUIConfig: config.CodexUIConfig{
 			Compact:    true,
 			CodeReview: false,
@@ -90,7 +90,7 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 
 	now := time.Now()
 	m := Model{
-		width: 80,
+		width: 85,
 		claudeUIConfig: config.ClaudeUIConfig{
 			Compact:  true,
 			PaceTick: true,
@@ -134,7 +134,7 @@ func TestOpenRouterSectionRenderSnapshot(t *testing.T) {
 	require.NoError(t, err, "parse activity json")
 
 	m := Model{
-		width: 80,
+		width: 85,
 		orUIConfig: config.OpenRouterUIConfig{
 			Summary:    true,
 			DailySpend: true,
