@@ -211,6 +211,17 @@ func mapKeyUsage(response *keyResponse) KeyUsage {
 	}
 }
 
+// ParseActivityJSON decodes a raw `/activity` response and returns the
+// aggregated Activity and DailyActivity views. Intended for tests and
+// tooling that want to replay recorded responses.
+func ParseActivityJSON(data []byte) (*Activity, *DailyActivity, error) {
+	var resp activityResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, nil, fmt.Errorf("parse activity: %w", err)
+	}
+	return buildActivity(resp.Data), buildDailyActivity(resp.Data), nil
+}
+
 func buildActivity(items []activityItem) *Activity {
 	byModel := make(map[string]*ModelUsage, len(items))
 	activity := &Activity{}

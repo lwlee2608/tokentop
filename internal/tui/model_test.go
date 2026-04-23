@@ -12,6 +12,7 @@ import (
 	"github.com/lwlee2608/tokentop/internal/config"
 	"github.com/lwlee2608/tokentop/pkg/claude"
 	"github.com/lwlee2608/tokentop/pkg/codex"
+	"github.com/lwlee2608/tokentop/pkg/openrouter"
 	"github.com/muesli/termenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -121,6 +122,54 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 	want, err := os.ReadFile(goldenPath)
 	require.NoError(t, err, "read golden")
 	assert.Equal(t, string(want), got, "claude section mismatch")
+}
+
+func TestOpenRouterSectionRenderSnapshot(t *testing.T) {
+	forceTrueColorProfile(t)
+
+	raw, err := os.ReadFile(filepath.Join("testdata", "openrouter_activity.json"))
+	require.NoError(t, err, "read activity json")
+
+	activity, daily, err := openrouter.ParseActivityJSON(raw)
+	require.NoError(t, err, "parse activity json")
+
+	m := Model{
+		width: 80,
+		orUIConfig: config.OpenRouterUIConfig{
+			Summary:    true,
+			DailySpend: true,
+			TopModels:  true,
+			Metric:     "tokens",
+		},
+		orMetric: metricTokens,
+		orUsage: &openrouter.Usage{
+			Key: openrouter.KeyUsage{
+				Label:           "tokentop",
+				IsManagementKey: true,
+			},
+			Credits: &openrouter.Credits{
+				Total:     2000.00,
+				Used:      1850.72,
+				Remaining: 149.28,
+			},
+			Activity:      activity,
+			DailyActivity: daily,
+		},
+	}
+
+	got := m.orSection()
+	if testing.Verbose() {
+		fmt.Print(got)
+	}
+	goldenPath := filepath.Join("testdata", "openrouter_tokens.golden")
+
+	if *updateGolden {
+		require.NoError(t, os.WriteFile(goldenPath, []byte(got), 0644), "write golden")
+	}
+
+	want, err := os.ReadFile(goldenPath)
+	require.NoError(t, err, "read golden")
+	assert.Equal(t, string(want), got, "openrouter section mismatch")
 }
 
 func TestBuildBarCellsStartOfWindowMarksUsageOverPace(t *testing.T) {
