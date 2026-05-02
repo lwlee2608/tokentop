@@ -23,6 +23,50 @@ const (
 	metricTokens   orMetric = "tokens"
 )
 
+func redactAPIKey(key string) string {
+	if len(key) <= 8 {
+		return "…"
+	}
+	return key[:4] + "…" + key[len(key)-4:]
+}
+
+func (m Model) renderORKeyHeader() string {
+	var label, redacted string
+	if m.orUsage != nil {
+		label = m.orUsage.Key.Label
+	}
+	if m.orAuth != nil && m.orAuth.APIKey != "" {
+		redacted = redactAPIKey(m.orAuth.APIKey)
+	}
+	// OpenRouter returns the redacted key as Label for non-management keys; dedupe.
+	if strings.HasPrefix(label, "sk-or-") {
+		label = ""
+	}
+	parts := make([]string, 0, 2)
+	if label != "" {
+		parts = append(parts, label)
+	}
+	if redacted != "" {
+		parts = append(parts, redacted)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return dimStyle.Render("  Key: "+strings.Join(parts, " · ")) + "\n"
+}
+
+func parseLimitResetPeriod(s string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "daily":
+		return "Daily", true
+	case "weekly":
+		return "Weekly", true
+	case "monthly":
+		return "Monthly", true
+	}
+	return "", false
+}
+
 func parseMetric(s string) orMetric {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "requests", "request", "req":
@@ -147,19 +191,52 @@ func (m Model) orSectionBody() string {
 	u := m.orUsage
 	bw := m.barWidth()
 
+	if header := m.renderORKeyHeader(); header != "" {
+		b.WriteString(header)
+	}
+
+	compactKey := m.orUIConfig.Compact && !u.Key.IsManagementKey
+	periodLabel, hasPeriod := parseLimitResetPeriod(u.Key.LimitReset)
+	barCoversPeriod := false
 	if u.Key.Limit > 0 {
-		b.WriteByte('\n')
 		usedPct := (u.Key.Limit - u.Key.LimitRemaining) / u.Key.Limit * 100
-		b.WriteString(renderBar("Credit Limit", usedPct, -1, bw,
-			fmt.Sprintf("$%.4f remaining (resets %s)", u.Key.LimitRemaining, u.Key.LimitReset),
-		))
-		b.WriteByte('\n')
+		compactLabel := "Cr Limit"
+		fullLabel := "Credit Limit"
+		if hasPeriod {
+			compactLabel = fmt.Sprintf("%-8s", periodLabel)
+			fullLabel = periodLabel + " Limit"
+			barCoversPeriod = true
+		}
+		if compactKey {
+			info := truncate(u.Key.LimitReset, compactResetWidth)
+			if hasPeriod {
+				info = fmt.Sprintf("$%.2f", u.Key.LimitRemaining)
+			}
+			b.WriteString(renderCompactBar(compactLabel, usedPct, -1, bw, info))
+		} else {
+			b.WriteByte('\n')
+			b.WriteString(renderBar(fullLabel, usedPct, -1, bw,
+				fmt.Sprintf("$%.4f remaining (resets %s)", u.Key.LimitRemaining, u.Key.LimitReset),
+			))
+			b.WriteByte('\n')
+		}
 	}
 
 	if !u.Key.IsManagementKey {
-		b.WriteString(dimStyle.Render(fmt.Sprintf("  Usage — Daily: $%.4f | Weekly: $%.4f | Monthly: $%.4f",
-			u.Key.UsageDaily, u.Key.UsageWeekly, u.Key.UsageMonthly)))
-		b.WriteByte('\n')
+		parts := make([]string, 0, 3)
+		if !barCoversPeriod || periodLabel != "Daily" {
+			parts = append(parts, fmt.Sprintf("Daily: $%.4f", u.Key.UsageDaily))
+		}
+		if !barCoversPeriod || periodLabel != "Weekly" {
+			parts = append(parts, fmt.Sprintf("Weekly: $%.4f", u.Key.UsageWeekly))
+		}
+		if !barCoversPeriod || periodLabel != "Monthly" {
+			parts = append(parts, fmt.Sprintf("Monthly: $%.4f", u.Key.UsageMonthly))
+		}
+		if len(parts) > 0 {
+			b.WriteString(dimStyle.Render("  Usage          " + strings.Join(parts, " | ")))
+			b.WriteByte('\n')
+		}
 	}
 
 	if u.Key.IsManagementKey {
@@ -189,7 +266,7 @@ func renderORSummary(u *openrouter.Usage) string {
 	// b.WriteByte('\n')
 	parts := make([]string, 0, 3)
 	if u.Credits != nil {
-		parts = append(parts, fmt.Sprintf("Credits $%.2f/$%.2f left", u.Credits.Remaining, u.Credits.Total))
+		parts = append(parts, fmt.Sprintf("Credits $%.4f/$%.2f left", u.Credits.Remaining, u.Credits.Total))
 	}
 	if u.Activity != nil {
 		t := u.Activity.Totals
@@ -219,10 +296,7 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 
 	metric := m.orMetric
 	days := u.DailyActivity.Days
-	avail := m.width - 2 - chartGutter
-	if avail < chartMinDays*2 {
-		avail = chartMinDays * 2
-	}
+	avail := max(m.width-2-chartGutter, chartMinDays*2)
 	maxDays := avail / 2
 	if len(days) > maxDays {
 		days = days[len(days)-maxDays:]

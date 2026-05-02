@@ -46,6 +46,7 @@ type ClaudeUIConfig struct {
 }
 
 type OpenRouterUIConfig struct {
+	Compact    bool   `mapstructure:"compact"`
 	Summary    bool   `mapstructure:"summary"`
 	DailySpend bool   `mapstructure:"daily_spend"`
 	TopModels  bool   `mapstructure:"top_models"`
@@ -68,12 +69,15 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		CodexUI: CodexUIConfig{
+			Compact:  true,
 			PaceTick: true,
 		},
 		ClaudeUI: ClaudeUIConfig{
+			Compact:  true,
 			PaceTick: true,
 		},
 		OpenRouterUI: OpenRouterUIConfig{
+			Compact:    true,
 			Summary:    true,
 			DailySpend: true,
 			TopModels:  true,
