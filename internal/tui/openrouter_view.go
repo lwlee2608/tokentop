@@ -203,7 +203,7 @@ func (m Model) orSectionBody() string {
 		compactLabel := "Cr Limit"
 		fullLabel := "Credit Limit"
 		if hasPeriod {
-			compactLabel = periodLabel
+			compactLabel = fmt.Sprintf("%-8s", periodLabel)
 			fullLabel = periodLabel + " Limit"
 			barCoversPeriod = true
 		}
@@ -234,7 +234,7 @@ func (m Model) orSectionBody() string {
 			parts = append(parts, fmt.Sprintf("Monthly: $%.4f", u.Key.UsageMonthly))
 		}
 		if len(parts) > 0 {
-			b.WriteString(dimStyle.Render("  Usage       " + strings.Join(parts, " | ")))
+			b.WriteString(dimStyle.Render("  Usage          " + strings.Join(parts, " | ")))
 			b.WriteByte('\n')
 		}
 	}
