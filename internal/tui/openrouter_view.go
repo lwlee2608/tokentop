@@ -24,10 +24,10 @@ const (
 )
 
 func redactAPIKey(key string) string {
-	if len(key) <= 16 {
-		return key
+	if len(key) <= 8 {
+		return "…"
 	}
-	return key[:12] + "..." + key[len(key)-3:]
+	return key[:4] + "…" + key[len(key)-4:]
 }
 
 func (m Model) renderORKeyHeader() string {
