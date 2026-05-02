@@ -44,10 +44,6 @@ func (m Model) codexSectionBody() string {
 
 	u := m.codexUsage
 	bw := m.barWidth()
-	render := renderBar
-	if m.codexUIConfig.Compact {
-		render = renderCompactBar
-	}
 
 	credits := ""
 	if u.Credits.HasCredits {
@@ -59,40 +55,16 @@ func (m Model) codexSectionBody() string {
 	}
 	b.WriteString(dimStyle.Render(fmt.Sprintf("  Plan: %s%s", u.PlanType, credits)))
 	b.WriteByte('\n')
-	if !m.codexUIConfig.Compact {
-		b.WriteByte('\n')
-	}
 
 	if w := u.RateLimit.PrimaryWindow; w != nil {
-		resetInfo := fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("3:04 PM"), timeUntil(w.ResetTime()))
-		if m.codexUIConfig.Compact {
-			resetInfo = timeUntil(w.ResetTime())
-		}
-		b.WriteString(render("5h Limit", w.UsedPercent, m.codexElapsedPercent(w), bw, resetInfo))
-		if !m.codexUIConfig.Compact {
-			b.WriteByte('\n')
-		}
+		b.WriteString(renderCompactBar("5h Limit", w.UsedPercent, m.codexElapsedPercent(w), bw, timeUntil(w.ResetTime())))
 	}
 	if w := u.RateLimit.SecondaryWindow; w != nil {
-		resetInfo := fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime()))
-		if m.codexUIConfig.Compact {
-			resetInfo = timeUntil(w.ResetTime())
-		}
-		b.WriteString(render("Weekly  ", w.UsedPercent, m.codexElapsedPercent(w), bw, resetInfo))
-		if !m.codexUIConfig.Compact {
-			b.WriteByte('\n')
-		}
+		b.WriteString(renderCompactBar("Weekly  ", w.UsedPercent, m.codexElapsedPercent(w), bw, timeUntil(w.ResetTime())))
 	}
 	if m.codexUIConfig.CodeReview {
 		if w := u.CodeReviewRateLimit.PrimaryWindow; w != nil {
-			resetInfo := fmt.Sprintf("resets %s (%s)", w.ResetTime().Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetTime()))
-			if m.codexUIConfig.Compact {
-				resetInfo = timeUntil(w.ResetTime())
-			}
-			b.WriteString(render("Code Review", w.UsedPercent, m.codexElapsedPercent(w), bw, resetInfo))
-			if !m.codexUIConfig.Compact {
-				b.WriteByte('\n')
-			}
+			b.WriteString(renderCompactBar("Code Review", w.UsedPercent, m.codexElapsedPercent(w), bw, timeUntil(w.ResetTime())))
 		}
 	}
 

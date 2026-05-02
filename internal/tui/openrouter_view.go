@@ -195,7 +195,7 @@ func (m Model) orSectionBody() string {
 		b.WriteString(header)
 	}
 
-	compactKey := m.orUIConfig.Compact && !u.Key.IsManagementKey
+	compactKey := !u.Key.IsManagementKey
 	periodLabel, hasPeriod := parseLimitResetPeriod(u.Key.LimitReset)
 	barCoversPeriod := false
 	if u.Key.Limit > 0 {
