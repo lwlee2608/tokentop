@@ -296,10 +296,7 @@ func (m Model) renderORDailyChart(u *openrouter.Usage) string {
 
 	metric := m.orMetric
 	days := u.DailyActivity.Days
-	avail := m.width - 2 - chartGutter
-	if avail < chartMinDays*2 {
-		avail = chartMinDays * 2
-	}
+	avail := max(m.width-2-chartGutter, chartMinDays*2)
 	maxDays := avail / 2
 	if len(days) > maxDays {
 		days = days[len(days)-maxDays:]
