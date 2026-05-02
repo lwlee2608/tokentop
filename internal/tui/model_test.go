@@ -172,6 +172,45 @@ func TestOpenRouterSectionRenderSnapshot(t *testing.T) {
 	assert.Equal(t, string(want), got, "openrouter section mismatch")
 }
 
+func TestOpenRouterCompactDailyKeySnapshot(t *testing.T) {
+	forceTrueColorProfile(t)
+
+	m := Model{
+		width: 85,
+		orUIConfig: config.OpenRouterUIConfig{
+			Compact: true,
+		},
+		orAuth: &openrouter.Auth{
+			APIKey: "sk-or-v1-771xxxxxxxa29",
+		},
+		orUsage: &openrouter.Usage{
+			Key: openrouter.KeyUsage{
+				Limit:           3.00,
+				LimitRemaining:  1.05,
+				LimitReset:      "daily",
+				IsManagementKey: false,
+				UsageDaily:      1.95,
+				UsageWeekly:     3.1272,
+				UsageMonthly:    0.0,
+			},
+		},
+	}
+
+	got := m.orSection()
+	if testing.Verbose() {
+		fmt.Print(got)
+	}
+	goldenPath := filepath.Join("testdata", "openrouter_compact_daily.golden")
+
+	if *updateGolden {
+		require.NoError(t, os.WriteFile(goldenPath, []byte(got), 0644), "write golden")
+	}
+
+	want, err := os.ReadFile(goldenPath)
+	require.NoError(t, err, "read golden")
+	assert.Equal(t, string(want), got, "openrouter compact section mismatch")
+}
+
 func TestBuildBarCellsStartOfWindowMarksUsageOverPace(t *testing.T) {
 	cells := buildBarCells(50, 0, 10)
 
