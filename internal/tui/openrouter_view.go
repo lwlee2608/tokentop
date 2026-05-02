@@ -147,13 +147,20 @@ func (m Model) orSectionBody() string {
 	u := m.orUsage
 	bw := m.barWidth()
 
+	compactKey := m.orUIConfig.Compact && !u.Key.IsManagementKey
 	if u.Key.Limit > 0 {
 		b.WriteByte('\n')
 		usedPct := (u.Key.Limit - u.Key.LimitRemaining) / u.Key.Limit * 100
-		b.WriteString(renderBar("Credit Limit", usedPct, -1, bw,
-			fmt.Sprintf("$%.4f remaining (resets %s)", u.Key.LimitRemaining, u.Key.LimitReset),
-		))
-		b.WriteByte('\n')
+		if compactKey {
+			b.WriteString(renderCompactBar("Credit Limit", usedPct, -1, bw,
+				truncate(u.Key.LimitReset, compactResetWidth),
+			))
+		} else {
+			b.WriteString(renderBar("Credit Limit", usedPct, -1, bw,
+				fmt.Sprintf("$%.4f remaining (resets %s)", u.Key.LimitRemaining, u.Key.LimitReset),
+			))
+			b.WriteByte('\n')
+		}
 	}
 
 	if !u.Key.IsManagementKey {
