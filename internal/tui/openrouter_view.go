@@ -52,7 +52,11 @@ func (m Model) renderORKeyHeader() string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return dimStyle.Render("  Key: "+strings.Join(parts, " · ")) + "\n"
+	suffix := " (standard key)"
+	if m.orUsage != nil && m.orUsage.Key.IsManagementKey {
+		suffix = " (mgnt key)"
+	}
+	return dimStyle.Render("  Key: "+strings.Join(parts, " · ")+suffix) + "\n"
 }
 
 func parseLimitResetPeriod(s string) (string, bool) {
