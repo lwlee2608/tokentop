@@ -174,7 +174,7 @@ func TestOpenRouterCompactDailyKeySnapshot(t *testing.T) {
 	forceTrueColorProfile(t)
 
 	m := Model{
-		width: 85,
+		width:      85,
 		orUIConfig: config.OpenRouterUIConfig{},
 		orAuth: &openrouter.Auth{
 			APIKey: "sk-or-v1-771xxxxxxxa29",
@@ -205,6 +205,12 @@ func TestOpenRouterCompactDailyKeySnapshot(t *testing.T) {
 	want, err := os.ReadFile(goldenPath)
 	require.NoError(t, err, "read golden")
 	assert.Equal(t, string(want), got, "openrouter compact section mismatch")
+}
+
+func TestClipLineKeepsWideRunesWithinMaxWidth(t *testing.T) {
+	got := clipLine("Status: 警告 warning", 10)
+
+	assert.LessOrEqual(t, lipgloss.Width(got), 10)
 }
 
 func TestBuildBarCellsStartOfWindowMarksUsageOverPace(t *testing.T) {

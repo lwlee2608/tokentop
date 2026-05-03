@@ -5,6 +5,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 )
 
 const barPadding = 12
@@ -118,14 +119,14 @@ func clipLine(line string, maxW int) string {
 			i = j
 			continue
 		}
-		if visible >= maxW {
+		r, size := utf8.DecodeRuneInString(line[i:])
+		w := runewidth.RuneWidth(r)
+		if visible+w > maxW {
 			break
 		}
-		r, size := utf8.DecodeRuneInString(line[i:])
-		_ = r
 		b.WriteString(line[i : i+size])
 		i += size
-		visible++
+		visible += w
 	}
 	b.WriteString("\x1b[0m")
 	return b.String()
