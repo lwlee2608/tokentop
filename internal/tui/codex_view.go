@@ -72,9 +72,9 @@ func (m Model) codexSectionBody() string {
 	return b.String()
 }
 
-func fetchCodexUsage(auth *codex.Auth) tea.Cmd {
+func fetchCodexUsage(auth *codex.Auth, gen uint64) tea.Cmd {
 	return func() tea.Msg {
 		usage, err := codex.FetchUsage(auth)
-		return codexUsageMsg{usage: usage, err: err}
+		return codexUsageMsg{usage: usage, err: err, gen: gen}
 	}
 }

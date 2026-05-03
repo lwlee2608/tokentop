@@ -37,13 +37,6 @@ func (w *UsageWindow) ResetTime() time.Time {
 	return time.Unix(w.ResetAt, 0)
 }
 
-func (w *UsageWindow) WindowMinutes() int {
-	if w == nil {
-		return 0
-	}
-	return w.LimitWindowSeconds / 60
-}
-
 type UsageCredits struct {
 	HasCredits bool    `json:"has_credits"`
 	Unlimited  bool    `json:"unlimited"`
@@ -70,15 +63,15 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
-	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Warn("read response failed", "error", err, "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
 		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
+		return nil, fmt.Errorf("Codex API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var usage Usage

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/lwlee2608/tokentop/pkg/openrouter"
+	"github.com/mattn/go-runewidth"
 )
 
 const (
@@ -519,15 +520,15 @@ func topNModels(modelSpend map[string]float64, n int) []string {
 	for m, s := range modelSpend {
 		all = append(all, ms{m, s})
 	}
-	for i := 0; i < len(all); i++ {
-		for j := i + 1; j < len(all); j++ {
-			if all[j].spend > all[i].spend {
-				all[i], all[j] = all[j], all[i]
-			}
+	sort.Slice(all, func(i, j int) bool {
+		if all[i].spend != all[j].spend {
+			return all[i].spend > all[j].spend
 		}
-	}
-	result := make([]string, 0, int(math.Min(float64(n), float64(len(all)))))
-	for i := 0; i < len(all) && i < n; i++ {
+		return all[i].model < all[j].model
+	})
+	limit := min(n, len(all))
+	result := make([]string, 0, limit)
+	for i := 0; i < limit; i++ {
 		result = append(result, all[i].model)
 	}
 	return result
@@ -648,8 +649,8 @@ func formatTokens(n float64) string {
 }
 
 func truncate(s string, max int) string {
-	if len(s) <= max {
+	if runewidth.StringWidth(s) <= max {
 		return s
 	}
-	return s[:max-1] + "…"
+	return runewidth.Truncate(s, max, "…")
 }

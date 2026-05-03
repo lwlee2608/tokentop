@@ -73,9 +73,9 @@ func (m Model) claudeSectionBody() string {
 	return b.String()
 }
 
-func fetchClaudeUsage(auth *claude.Auth) tea.Cmd {
+func fetchClaudeUsage(auth *claude.Auth, gen uint64) tea.Cmd {
 	return func() tea.Msg {
 		usage, err := claude.FetchUsage(auth)
-		return claudeUsageMsg{usage: usage, err: err}
+		return claudeUsageMsg{usage: usage, err: err, gen: gen}
 	}
 }

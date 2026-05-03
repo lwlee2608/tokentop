@@ -263,17 +263,18 @@ func buildActivity(items []activityItem) *Activity {
 }
 
 func buildDailyActivity(items []activityItem) *DailyActivity {
-	type key struct{ date, model string }
-	agg := make(map[key]*ModelUsage)
-	dates := make(map[string]bool)
+	byDate := make(map[string]map[string]*ModelUsage)
 
 	for _, item := range items {
-		dates[item.Date] = true
-		k := key{item.Date, item.Model}
-		m := agg[k]
+		models := byDate[item.Date]
+		if models == nil {
+			models = make(map[string]*ModelUsage)
+			byDate[item.Date] = models
+		}
+		m := models[item.Model]
 		if m == nil {
 			m = &ModelUsage{Model: item.Model}
-			agg[k] = m
+			models[item.Model] = m
 		}
 		m.Spend += item.Usage
 		m.Requests += item.Requests
@@ -282,20 +283,19 @@ func buildDailyActivity(items []activityItem) *DailyActivity {
 		m.ReasoningTokens += item.ReasoningTokens
 	}
 
-	sortedDates := make([]string, 0, len(dates))
-	for d := range dates {
+	sortedDates := make([]string, 0, len(byDate))
+	for d := range byDate {
 		sortedDates = append(sortedDates, d)
 	}
 	sort.Strings(sortedDates)
 
-	daily := &DailyActivity{}
+	daily := &DailyActivity{Days: make([]DailyUsage, 0, len(sortedDates))}
 	for _, date := range sortedDates {
-		day := DailyUsage{Date: date}
-		for k, m := range agg {
-			if k.date == date {
-				day.Models = append(day.Models, *m)
-				day.Total += m.Spend
-			}
+		models := byDate[date]
+		day := DailyUsage{Date: date, Models: make([]ModelUsage, 0, len(models))}
+		for _, m := range models {
+			day.Models = append(day.Models, *m)
+			day.Total += m.Spend
 		}
 		sort.Slice(day.Models, func(i, j int) bool {
 			return day.Models[i].Spend > day.Models[j].Spend
