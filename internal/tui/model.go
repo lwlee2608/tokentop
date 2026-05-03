@@ -26,29 +26,33 @@ type countdownMsg time.Time
 type codexUsageMsg struct {
 	usage *codex.Usage
 	err   error
+	gen   uint64
 }
 
-type codexRetryMsg struct{}
+type codexRetryMsg struct{ gen uint64 }
 
 type orUsageMsg struct {
 	usage *openrouter.Usage
 	err   error
+	gen   uint64
 }
 
-type orRetryMsg struct{}
+type orRetryMsg struct{ gen uint64 }
 
 type claudeUsageMsg struct {
 	usage *claude.Usage
 	err   error
+	gen   uint64
 }
 
-type claudeRetryMsg struct{}
+type claudeRetryMsg struct{ gen uint64 }
 
 type Model struct {
 	version        string
 	width          int
 	lastFetch      time.Time
 	nextRefresh    time.Time
+	gen            uint64
 	codexUIConfig  config.CodexUIConfig
 	claudeUIConfig config.ClaudeUIConfig
 	orUIConfig     config.OpenRouterUIConfig
@@ -87,13 +91,13 @@ func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth
 func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{tick(), countdown()}
 	if m.codexAuth != nil {
-		cmds = append(cmds, fetchCodexUsage(m.codexAuth))
+		cmds = append(cmds, fetchCodexUsage(m.codexAuth, m.gen))
 	}
 	if m.orAuth != nil {
-		cmds = append(cmds, fetchORUsage(m.orAuth))
+		cmds = append(cmds, fetchORUsage(m.orAuth, m.gen))
 	}
 	if m.claudeAuth != nil {
-		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth))
+		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth, m.gen))
 	}
 	return tea.Batch(cmds...)
 }
@@ -104,13 +108,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 
 	case tea.KeyMsg:
-		if msg.String() == "q" || msg.String() == "ctrl+c" {
+		key := msg.String()
+		switch key {
+		case "q", "ctrl+c":
 			return m, tea.Quit
-		}
-		if msg.String() == "r" {
+		case "r":
 			return m.refresh()
-		}
-		if msg.String() == "m" {
+		case "m":
 			m.orMetric = m.orMetric.next()
 			return m, nil
 		}
@@ -122,24 +126,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.refresh()
 
 	case codexRetryMsg:
-		return m, fetchCodexUsage(m.codexAuth)
+		if msg.gen != m.gen {
+			return m, nil
+		}
+		return m, fetchCodexUsage(m.codexAuth, m.gen)
 
 	case orRetryMsg:
-		return m, fetchORUsage(m.orAuth)
+		if msg.gen != m.gen {
+			return m, nil
+		}
+		return m, fetchORUsage(m.orAuth, m.gen)
 
 	case claudeRetryMsg:
-		return m, fetchClaudeUsage(m.claudeAuth)
+		if msg.gen != m.gen {
+			return m, nil
+		}
+		return m, fetchClaudeUsage(m.claudeAuth, m.gen)
 
 	case codexUsageMsg:
+		if msg.gen != m.gen {
+			return m, nil
+		}
 		if msg.err != nil {
 			m.codexErr = msg.err.Error()
-			slog.Warn("codex usage refresh failed", "error", msg.err, "retry", m.codexRetries, "max_retries", maxRetries)
-			if m.codexRetries < maxRetries {
-				m.codexRetries++
-				slog.Debug("scheduling codex usage retry", "retry", m.codexRetries, "delay", retryDelay.String())
-				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return codexRetryMsg{} })
+			if cmd := m.scheduleRetry("codex", &m.codexRetries, msg.err, func(g uint64) tea.Msg { return codexRetryMsg{gen: g} }); cmd != nil {
+				return m, cmd
 			}
-			slog.Error("codex usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
 		} else {
 			m.codexUsage = msg.usage
 			m.codexErr = ""
@@ -149,15 +161,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case orUsageMsg:
+		if msg.gen != m.gen {
+			return m, nil
+		}
 		if msg.err != nil {
 			m.orErr = msg.err.Error()
-			slog.Warn("openrouter usage refresh failed", "error", msg.err, "retry", m.orRetries, "max_retries", maxRetries)
-			if m.orRetries < maxRetries {
-				m.orRetries++
-				slog.Debug("scheduling openrouter usage retry", "retry", m.orRetries, "delay", retryDelay.String())
-				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return orRetryMsg{} })
+			if cmd := m.scheduleRetry("openrouter", &m.orRetries, msg.err, func(g uint64) tea.Msg { return orRetryMsg{gen: g} }); cmd != nil {
+				return m, cmd
 			}
-			slog.Error("openrouter usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
 		} else {
 			if m.orUsage == nil {
 				keyType := "standard"
@@ -176,15 +187,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case claudeUsageMsg:
+		if msg.gen != m.gen {
+			return m, nil
+		}
 		if msg.err != nil {
 			m.claudeErr = msg.err.Error()
-			slog.Warn("claude usage refresh failed", "error", msg.err, "retry", m.claudeRetries, "max_retries", maxRetries)
-			if m.claudeRetries < maxRetries {
-				m.claudeRetries++
-				slog.Debug("scheduling claude usage retry", "retry", m.claudeRetries, "delay", retryDelay.String())
-				return m, tea.Tick(retryDelay, func(time.Time) tea.Msg { return claudeRetryMsg{} })
+			if cmd := m.scheduleRetry("claude", &m.claudeRetries, msg.err, func(g uint64) tea.Msg { return claudeRetryMsg{gen: g} }); cmd != nil {
+				return m, cmd
 			}
-			slog.Error("claude usage refresh exhausted retries", "error", msg.err, "max_retries", maxRetries)
 		} else {
 			m.claudeUsage = msg.usage
 			m.claudeErr = ""
@@ -196,21 +206,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// scheduleRetry handles the common retry-with-backoff bookkeeping. Returns a
+// tea.Cmd to fire the retry, or nil when retries are exhausted.
+func (m Model) scheduleRetry(provider string, retries *int, err error, mkMsg func(gen uint64) tea.Msg) tea.Cmd {
+	slog.Warn(provider+" usage refresh failed", "error", err, "retry", *retries, "max_retries", maxRetries)
+	if *retries >= maxRetries {
+		slog.Error(provider+" usage refresh exhausted retries", "error", err, "max_retries", maxRetries)
+		return nil
+	}
+	*retries++
+	slog.Debug("scheduling "+provider+" usage retry", "retry", *retries, "delay", retryDelay.String())
+	gen := m.gen
+	return tea.Tick(retryDelay, func(time.Time) tea.Msg { return mkMsg(gen) })
+}
+
 func (m Model) refresh() (tea.Model, tea.Cmd) {
 	m.nextRefresh = time.Now().Add(refreshInterval)
+	m.gen++
 	m.codexRetries = 0
 	m.orRetries = 0
 	m.claudeRetries = 0
-	slog.Debug("starting usage refresh")
+	slog.Debug("starting usage refresh", "gen", m.gen)
 	var cmds []tea.Cmd
 	if m.codexAuth != nil {
-		cmds = append(cmds, fetchCodexUsage(m.codexAuth))
+		cmds = append(cmds, fetchCodexUsage(m.codexAuth, m.gen))
 	}
 	if m.orAuth != nil {
-		cmds = append(cmds, fetchORUsage(m.orAuth))
+		cmds = append(cmds, fetchORUsage(m.orAuth, m.gen))
 	}
 	if m.claudeAuth != nil {
-		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth))
+		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth, m.gen))
 	}
 	cmds = append(cmds, tick())
 	return m, tea.Batch(cmds...)
@@ -379,10 +404,10 @@ func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidt
 	return b.String()
 }
 
-func fetchORUsage(auth *openrouter.Auth) tea.Cmd {
+func fetchORUsage(auth *openrouter.Auth, gen uint64) tea.Cmd {
 	return func() tea.Msg {
 		usage, err := openrouter.FetchUsage(auth)
-		return orUsageMsg{usage: usage, err: err}
+		return orUsageMsg{usage: usage, err: err, gen: gen}
 	}
 }
 

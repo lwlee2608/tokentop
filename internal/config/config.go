@@ -3,6 +3,8 @@ package config
 import (
 	"bytes"
 	_ "embed"
+	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,10 +59,13 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	configDir := filepath.Join(home, ".config", "tokentop")
+	configPath := filepath.Join(configDir, "config.yaml")
+
 	a := adder.New()
 	a.SetConfigName("config")
 	a.SetConfigType("yaml")
-	a.AddConfigPath(filepath.Join(home, ".config", "tokentop"))
+	a.AddConfigPath(configDir)
 	a.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	a.AutomaticEnv()
 
@@ -80,23 +85,20 @@ func Load() (*Config, error) {
 		},
 	}
 
-	if err := a.ReadInConfig(); err != nil {
-		if strings.HasPrefix(err.Error(), "config file not found") {
-			writeDefaultConfig(filepath.Join(home, ".config", "tokentop", "config.yaml"))
-			// Retry after writing the default config
-			if err := a.ReadInConfig(); err != nil {
-				return cfg, nil
-			}
-		} else {
-			return nil, err
+	if _, err := os.Stat(configPath); errors.Is(err, os.ErrNotExist) {
+		if werr := writeDefaultConfig(configPath); werr != nil {
+			slog.Warn("could not write default config, continuing with built-in defaults", "path", configPath, "error", werr)
+			return cfg, nil
 		}
 	}
 
+	if err := a.ReadInConfig(); err != nil {
+		return nil, err
+	}
 	if err := a.Unmarshal(cfg); err != nil {
 		return nil, err
 	}
 
-	configPath := filepath.Join(home, ".config", "tokentop", "config.yaml")
 	if backfillDefaults(configPath) {
 		if err := a.ReadInConfig(); err != nil {
 			return nil, err
@@ -112,11 +114,11 @@ func Load() (*Config, error) {
 //go:embed default_config.yaml
 var defaultConfigYAML []byte
 
-func writeDefaultConfig(path string) {
+func writeDefaultConfig(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return
+		return err
 	}
-	_ = os.WriteFile(path, defaultConfigYAML, 0644)
+	return os.WriteFile(path, defaultConfigYAML, 0644)
 }
 
 // backfillDefaults reads the existing config file and the embedded default,

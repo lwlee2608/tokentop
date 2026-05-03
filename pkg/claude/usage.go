@@ -47,12 +47,13 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
+		return nil, fmt.Errorf("Anthropic API returned status %d: %s", resp.StatusCode, string(body))
 	}
+	io.Copy(io.Discard, resp.Body)
 
 	usage := &Usage{
 		SubscriptionType: auth.SubscriptionType,
@@ -86,10 +87,11 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 }
 
 func parseRateWindow(utilization, status, resetEpoch string) *RateWindow {
-	w := &RateWindow{Status: status}
-	if v, err := strconv.ParseFloat(utilization, 64); err == nil {
-		w.Utilization = v
+	v, err := strconv.ParseFloat(utilization, 64)
+	if err != nil {
+		return nil
 	}
+	w := &RateWindow{Status: status, Utilization: v}
 	if v, err := strconv.ParseInt(resetEpoch, 10, 64); err == nil && v > 0 {
 		w.ResetAt = time.Unix(v, 0)
 	}
