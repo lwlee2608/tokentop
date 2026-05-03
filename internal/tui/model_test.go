@@ -38,7 +38,6 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 	m := Model{
 		width: 85,
 		codexUIConfig: config.CodexUIConfig{
-			Compact:    true,
 			CodeReview: false,
 			PaceTick:   true,
 		},
@@ -92,7 +91,6 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 	m := Model{
 		width: 85,
 		claudeUIConfig: config.ClaudeUIConfig{
-			Compact:  true,
 			PaceTick: true,
 		},
 		claudeUsage: &claude.Usage{
@@ -177,9 +175,7 @@ func TestOpenRouterCompactDailyKeySnapshot(t *testing.T) {
 
 	m := Model{
 		width: 85,
-		orUIConfig: config.OpenRouterUIConfig{
-			Compact: true,
-		},
+		orUIConfig: config.OpenRouterUIConfig{},
 		orAuth: &openrouter.Auth{
 			APIKey: "sk-or-v1-771xxxxxxxa29",
 		},

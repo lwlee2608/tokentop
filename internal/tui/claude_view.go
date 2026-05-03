@@ -49,45 +49,24 @@ func (m Model) claudeSectionBody() string {
 
 	u := m.claudeUsage
 	bw := m.barWidth()
-	render := renderBar
-	if m.claudeUIConfig.Compact {
-		render = renderCompactBar
-	}
 
 	b.WriteString(dimStyle.Render(fmt.Sprintf("  Plan: %s | Tier: %s", u.SubscriptionType, u.RateLimitTier)))
 	b.WriteByte('\n')
-	if !m.claudeUIConfig.Compact {
-		b.WriteByte('\n')
-	}
 
 	if w := u.SessionLimit; w != nil {
 		resetInfo := ""
 		if !w.ResetAt.IsZero() {
-			if m.claudeUIConfig.Compact {
-				resetInfo = timeUntil(w.ResetAt)
-			} else {
-				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("3:04 PM"), timeUntil(w.ResetAt))
-			}
+			resetInfo = timeUntil(w.ResetAt)
 		}
-		b.WriteString(render("5h Limit", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeSessionWindow), bw, resetInfo))
-		if !m.claudeUIConfig.Compact {
-			b.WriteByte('\n')
-		}
+		b.WriteString(renderCompactBar("5h Limit", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeSessionWindow), bw, resetInfo))
 	}
 
 	if w := u.WeeklyLimit; w != nil {
 		resetInfo := ""
 		if !w.ResetAt.IsZero() {
-			if m.claudeUIConfig.Compact {
-				resetInfo = timeUntil(w.ResetAt)
-			} else {
-				resetInfo = fmt.Sprintf("resets %s (%s)", w.ResetAt.Local().Format("Mon Jan 2 3:04 PM"), timeUntil(w.ResetAt))
-			}
+			resetInfo = timeUntil(w.ResetAt)
 		}
-		b.WriteString(render("Weekly  ", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeWeeklyWindow), bw, resetInfo))
-		if !m.claudeUIConfig.Compact {
-			b.WriteByte('\n')
-		}
+		b.WriteString(renderCompactBar("Weekly  ", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeWeeklyWindow), bw, resetInfo))
 	}
 
 	b.WriteByte('\n')

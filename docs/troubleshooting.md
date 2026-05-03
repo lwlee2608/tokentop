@@ -49,14 +49,7 @@ Editing the entry's Access Control list directly is unreliable for unsigned bina
 
 ## The bars or percentages look wrong
 
-Resize the terminal and press `r`. Very narrow terminals are clamped to a minimum bar width but may still look cramped — enable compact mode:
-
-```yaml
-codex_ui:
-  compact: true
-claude_ui:
-  compact: true
-```
+Resize the terminal and press `r`. Very narrow terminals are clamped to a minimum bar width but may still look cramped.
 
 ## Logs
 
