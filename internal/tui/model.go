@@ -271,10 +271,7 @@ func (m Model) footer() string {
 	} else {
 		ts = "..."
 	}
-	remaining := time.Until(m.nextRefresh)
-	if remaining < 0 {
-		remaining = 0
-	}
+	remaining := max(time.Until(m.nextRefresh), 0)
 	var orHint string
 	if m.orAuth != nil && (m.orUIConfig.DailySpend || m.orUIConfig.TopModels) {
 		orHint = fmt.Sprintf(" | metric: %s (m)", m.orMetric)
@@ -287,10 +284,7 @@ func elapsedCells(elapsedPercent float64, barWidth int) int {
 	if elapsedPercent <= 0 {
 		return 0
 	}
-	n := int(math.Round(elapsedPercent / 100 * float64(barWidth)))
-	if n > barWidth {
-		n = barWidth
-	}
+	n := min(int(math.Round(elapsedPercent/100*float64(barWidth))), barWidth)
 	return n
 }
 
@@ -318,7 +312,7 @@ func buildBarCells(usedPercent, elapsedPercent float64, barWidth int) []barCellS
 	}
 
 	cells := make([]barCellState, barWidth)
-	for i := 0; i < barWidth; i++ {
+	for i := range barWidth {
 		switch {
 		case i < filledCount && (!showElapsed || i < eCount):
 			cells[i] = barCellFilled

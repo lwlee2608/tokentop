@@ -417,7 +417,7 @@ func topNModels(modelSpend map[string]float64, n int) []string {
 	})
 	limit := min(n, len(all))
 	result := make([]string, 0, limit)
-	for i := 0; i < limit; i++ {
+	for i := range limit {
 		result = append(result, all[i].model)
 	}
 	return result
