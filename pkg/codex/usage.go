@@ -43,6 +43,22 @@ type UsageCredits struct {
 	Balance    *string `json:"balance"`
 }
 
+func formatErrorBody(status int, body []byte) string {
+	var parsed struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &parsed); err == nil && parsed.Error.Message != "" {
+		return fmt.Sprintf("%d: %s", status, parsed.Error.Message)
+	}
+	snippet := string(body)
+	if len(snippet) > 100 {
+		snippet = snippet[:100] + "..."
+	}
+	return fmt.Sprintf("%d: %s", status, snippet)
+}
+
 func FetchUsage(auth *Auth) (*Usage, error) {
 	logger := slog.With("provider", "codex", "endpoint", "/backend-api/wham/usage")
 	started := time.Now()
@@ -71,7 +87,7 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
-		return nil, fmt.Errorf("Codex API returned status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("Codex API %s", formatErrorBody(resp.StatusCode, body))
 	}
 
 	var usage Usage

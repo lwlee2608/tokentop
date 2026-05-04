@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -21,6 +22,22 @@ type RateWindow struct {
 	Utilization float64
 	Status      string
 	ResetAt     time.Time
+}
+
+func formatErrorBody(status int, body []byte) string {
+	var parsed struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &parsed); err == nil && parsed.Error.Message != "" {
+		return fmt.Sprintf("%d: %s", status, parsed.Error.Message)
+	}
+	snippet := string(body)
+	if len(snippet) > 100 {
+		snippet = snippet[:100] + "..."
+	}
+	return fmt.Sprintf("%d: %s", status, snippet)
 }
 
 func FetchUsage(auth *Auth) (*Usage, error) {
@@ -51,7 +68,7 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
-		return nil, fmt.Errorf("Anthropic API returned status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("Anthropic API %s", formatErrorBody(resp.StatusCode, body))
 	}
 	io.Copy(io.Discard, resp.Body)
 
