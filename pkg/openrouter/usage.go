@@ -340,6 +340,22 @@ func fetchActivity(client *http.Client, auth *Auth) (*activityResponse, error) {
 	return &result, nil
 }
 
+func formatErrorBody(status int, body []byte) string {
+	var parsed struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &parsed); err == nil && parsed.Error.Message != "" {
+		return fmt.Sprintf("%d: %s", status, parsed.Error.Message)
+	}
+	snippet := string(body)
+	if len(snippet) > 100 {
+		snippet = snippet[:100] + "..."
+	}
+	return fmt.Sprintf("%d: %s", status, snippet)
+}
+
 func doJSON(client *http.Client, auth *Auth, method, url string, target any) error {
 	logger := slog.With("provider", "openrouter", "method", method, "url", url)
 	started := time.Now()
@@ -366,8 +382,8 @@ func doJSON(client *http.Client, auth *Auth, method, url string, target any) err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
-		return fmt.Errorf("OpenRouter API %s returned status %d: %s", url, resp.StatusCode, string(body))
+		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
+		return fmt.Errorf("OpenRouter API %s %s", url, formatErrorBody(resp.StatusCode, body))
 	}
 
 	if err := json.Unmarshal(body, target); err != nil {
