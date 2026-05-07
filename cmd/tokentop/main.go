@@ -90,6 +90,7 @@ func main() {
 		if err != nil {
 			slog.Warn("openrouter auth unavailable", "error", err)
 			fmt.Fprintf(os.Stderr, "Warning: openrouter: %v\n", err)
+			fmt.Fprintln(os.Stderr, "Hint:", openrouter.LoginHint)
 		} else {
 			orAuth = auth
 			slog.Info("openrouter provider enabled")
@@ -114,7 +115,7 @@ func main() {
 		}
 	}
 
-	if codexAuth == nil && orAuth == nil && claudeAuth == nil && !cfg.Providers.Codex.Enabled && !cfg.Providers.Anthropic.Enabled {
+	if codexAuth == nil && orAuth == nil && claudeAuth == nil && !cfg.Providers.Codex.Enabled && !cfg.Providers.Anthropic.Enabled && !cfg.Providers.OpenRouter.Enabled {
 		slog.Error("no providers available")
 		fmt.Fprintf(os.Stderr, "Error: no providers available\n")
 		os.Exit(1)
@@ -122,7 +123,7 @@ func main() {
 
 	p := tea.NewProgram(tui.New(
 		tui.CodexProvider{Auth: codexAuth, Enabled: cfg.Providers.Codex.Enabled, UI: cfg.CodexUI},
-		tui.OpenRouterProvider{Auth: orAuth, UI: cfg.OpenRouterUI},
+		tui.OpenRouterProvider{Auth: orAuth, Enabled: cfg.Providers.OpenRouter.Enabled, UI: cfg.OpenRouterUI},
 		tui.ClaudeProvider{Auth: claudeAuth, Enabled: cfg.Providers.Anthropic.Enabled, UI: cfg.ClaudeUI},
 		AppVersion,
 	), tea.WithAltScreen())

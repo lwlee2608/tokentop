@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const LoginHint = "set OPENROUTER_API_KEY env var (see openrouter.ai/keys)"
+
 type Auth struct {
 	APIKey string `mask:"first=3,last=4"`
 }
