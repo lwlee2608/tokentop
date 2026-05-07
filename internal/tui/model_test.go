@@ -122,6 +122,28 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 	assert.Equal(t, string(want), got, "claude section mismatch")
 }
 
+func TestClaudeSectionShowsLoginHintWhenCredentialsMissing(t *testing.T) {
+	forceTrueColorProfile(t)
+	m := Model{width: 85, claudeEnabled: true}
+	got := m.claudeSection()
+	assert.Contains(t, got, "credentials not found")
+	assert.Contains(t, got, claude.LoginHint)
+}
+
+func TestClaudeSectionShowsLoginHintOnAuthFailure(t *testing.T) {
+	forceTrueColorProfile(t)
+	m := Model{
+		width:            85,
+		claudeEnabled:    true,
+		claudeAuth:       &claude.Auth{},
+		claudeErr:        "Anthropic API 401: invalid token: unauthorized",
+		claudeAuthFailed: true,
+	}
+	got := m.claudeSection()
+	assert.Contains(t, got, "401")
+	assert.Contains(t, got, claude.LoginHint)
+}
+
 func TestOpenRouterSectionRenderSnapshot(t *testing.T) {
 	forceTrueColorProfile(t)
 

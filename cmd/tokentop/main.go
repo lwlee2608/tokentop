@@ -106,19 +106,25 @@ func main() {
 		if err != nil {
 			slog.Warn("claude auth unavailable", "error", err)
 			fmt.Fprintf(os.Stderr, "Warning: claude: %v\n", err)
+			fmt.Fprintln(os.Stderr, "Hint:", claude.LoginHint)
 		} else {
 			claudeAuth = auth
 			slog.Info("claude provider enabled")
 		}
 	}
 
-	if codexAuth == nil && orAuth == nil && claudeAuth == nil {
+	if codexAuth == nil && orAuth == nil && claudeAuth == nil && !cfg.Providers.Anthropic.Enabled {
 		slog.Error("no providers available")
 		fmt.Fprintf(os.Stderr, "Error: no providers available\n")
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(tui.New(codexAuth, orAuth, claudeAuth, cfg.CodexUI, cfg.ClaudeUI, cfg.OpenRouterUI, AppVersion), tea.WithAltScreen())
+	p := tea.NewProgram(tui.New(
+		tui.CodexProvider{Auth: codexAuth, UI: cfg.CodexUI},
+		tui.OpenRouterProvider{Auth: orAuth, UI: cfg.OpenRouterUI},
+		tui.ClaudeProvider{Auth: claudeAuth, Enabled: cfg.Providers.Anthropic.Enabled, UI: cfg.ClaudeUI},
+		AppVersion,
+	), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		slog.Error("tui exited with error", "error", err)
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

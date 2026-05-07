@@ -15,6 +15,8 @@ const (
 	claudeWeeklyWindow  = 7 * 24 * time.Hour
 )
 
+var claudeLoginHintLine = "  Hint: " + claude.LoginHint
+
 func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) float64 {
 	if !m.claudeUIConfig.PaceTick {
 		return -1
@@ -29,6 +31,14 @@ func (m Model) claudeSection() string {
 func (m Model) claudeSectionBody() string {
 	var b strings.Builder
 
+	if m.claudeAuth == nil && m.claudeEnabled {
+		b.WriteString(pctStyle(red).Render("  ⚠️  credentials not found"))
+		b.WriteByte('\n')
+		b.WriteString(dimStyle.Render(claudeLoginHintLine))
+		b.WriteByte('\n')
+		return b.String()
+	}
+
 	if m.claudeUsage == nil && m.claudeErr == "" {
 		b.WriteString(dimStyle.Render("  Loading..."))
 		b.WriteByte('\n')
@@ -42,6 +52,10 @@ func (m Model) claudeSectionBody() string {
 		}
 		b.WriteString(pctStyle(c).Render(fmt.Sprintf("  ⚠️  %s (retry %d/%d)", m.claudeErr, m.claudeRetries, maxRetries)))
 		b.WriteByte('\n')
+		if m.claudeAuthFailed {
+			b.WriteString(dimStyle.Render(claudeLoginHintLine))
+			b.WriteByte('\n')
+		}
 		if m.claudeUsage == nil {
 			return b.String()
 		}
