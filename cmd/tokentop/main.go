@@ -77,6 +77,7 @@ func main() {
 		if err != nil {
 			slog.Warn("codex auth unavailable", "error", err)
 			fmt.Fprintf(os.Stderr, "Warning: codex: %v\n", err)
+			fmt.Fprintln(os.Stderr, "Hint:", codex.LoginHint)
 		} else {
 			codexAuth = auth
 			slog.Info("codex provider enabled")
@@ -113,14 +114,14 @@ func main() {
 		}
 	}
 
-	if codexAuth == nil && orAuth == nil && claudeAuth == nil && !cfg.Providers.Anthropic.Enabled {
+	if codexAuth == nil && orAuth == nil && claudeAuth == nil && !cfg.Providers.Codex.Enabled && !cfg.Providers.Anthropic.Enabled {
 		slog.Error("no providers available")
 		fmt.Fprintf(os.Stderr, "Error: no providers available\n")
 		os.Exit(1)
 	}
 
 	p := tea.NewProgram(tui.New(
-		tui.CodexProvider{Auth: codexAuth, UI: cfg.CodexUI},
+		tui.CodexProvider{Auth: codexAuth, Enabled: cfg.Providers.Codex.Enabled, UI: cfg.CodexUI},
 		tui.OpenRouterProvider{Auth: orAuth, UI: cfg.OpenRouterUI},
 		tui.ClaudeProvider{Auth: claudeAuth, Enabled: cfg.Providers.Anthropic.Enabled, UI: cfg.ClaudeUI},
 		AppVersion,

@@ -10,6 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+const codexLoginHintLine = "  Hint: " + codex.LoginHint
+
 func (m Model) codexElapsedPercent(w *codex.UsageWindow) float64 {
 	if !m.codexUIConfig.PaceTick || w == nil || w.LimitWindowSeconds <= 0 {
 		return -1
@@ -24,6 +26,14 @@ func (m Model) codexSection() string {
 func (m Model) codexSectionBody() string {
 	var b strings.Builder
 
+	if m.codexAuth == nil && m.codexEnabled {
+		b.WriteString(pctStyle(red).Render("  ⚠️  credentials not found"))
+		b.WriteByte('\n')
+		b.WriteString(dimStyle.Render(codexLoginHintLine))
+		b.WriteByte('\n')
+		return b.String()
+	}
+
 	if m.codexUsage == nil && m.codexErr == "" {
 		b.WriteString(dimStyle.Render("  Loading..."))
 		b.WriteByte('\n')
@@ -37,6 +47,10 @@ func (m Model) codexSectionBody() string {
 		}
 		b.WriteString(pctStyle(c).Render(fmt.Sprintf("  ⚠️  %s (retry %d/%d)", m.codexErr, m.codexRetries, maxRetries)))
 		b.WriteByte('\n')
+		if m.codexAuthFailed {
+			b.WriteString(dimStyle.Render(codexLoginHintLine))
+			b.WriteByte('\n')
+		}
 		if m.codexUsage == nil {
 			return b.String()
 		}
