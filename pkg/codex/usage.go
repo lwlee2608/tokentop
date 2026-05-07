@@ -2,12 +2,17 @@ package codex
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"time"
 )
+
+var ErrUnauthorized = errors.New("unauthorized")
+
+const LoginHint = "run `codex login` to sign in"
 
 type Usage struct {
 	PlanType            string       `json:"plan_type"`
@@ -87,6 +92,9 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
+		if resp.StatusCode == http.StatusUnauthorized {
+			return nil, fmt.Errorf("Codex API %s: %w", formatErrorBody(resp.StatusCode, body), ErrUnauthorized)
+		}
 		return nil, fmt.Errorf("Codex API %s", formatErrorBody(resp.StatusCode, body))
 	}
 

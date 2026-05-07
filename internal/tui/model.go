@@ -58,10 +58,12 @@ type Model struct {
 	claudeUIConfig config.ClaudeUIConfig
 	orUIConfig     config.OpenRouterUIConfig
 
-	codexAuth    *codex.Auth
-	codexUsage   *codex.Usage
-	codexErr     string
-	codexRetries int
+	codexAuth       *codex.Auth
+	codexUsage      *codex.Usage
+	codexErr        string
+	codexRetries    int
+	codexEnabled    bool
+	codexAuthFailed bool
 
 	orAuth    *openrouter.Auth
 	orUsage   *openrouter.Usage
@@ -78,8 +80,9 @@ type Model struct {
 }
 
 type CodexProvider struct {
-	Auth *codex.Auth
-	UI   config.CodexUIConfig
+	Auth    *codex.Auth
+	Enabled bool
+	UI      config.CodexUIConfig
 }
 
 type OpenRouterProvider struct {
@@ -96,6 +99,7 @@ type ClaudeProvider struct {
 func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, version string) Model {
 	return Model{
 		codexAuth:      cx.Auth,
+		codexEnabled:   cx.Enabled,
 		orAuth:         or.Auth,
 		claudeAuth:     cl.Auth,
 		claudeEnabled:  cl.Enabled,
@@ -169,12 +173,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.err != nil {
 			m.codexErr = msg.err.Error()
+			m.codexAuthFailed = errors.Is(msg.err, codex.ErrUnauthorized)
 			if cmd := m.scheduleRetry("codex", &m.codexRetries, msg.err, func(g uint64) tea.Msg { return codexRetryMsg{gen: g} }); cmd != nil {
 				return m, cmd
 			}
 		} else {
 			m.codexUsage = msg.usage
 			m.codexErr = ""
+			m.codexAuthFailed = false
 			m.codexRetries = 0
 			m.lastFetch = time.Now()
 			slog.Debug("codex usage refresh succeeded")
@@ -275,7 +281,7 @@ func (m Model) View() string {
 	if m.claudeAuth != nil || m.claudeEnabled {
 		b.WriteString(m.claudeSection())
 	}
-	if m.codexAuth != nil {
+	if m.codexAuth != nil || m.codexEnabled {
 		b.WriteString(m.codexSection())
 	}
 	if m.orAuth != nil {
