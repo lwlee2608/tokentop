@@ -119,7 +119,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := tea.NewProgram(tui.New(codexAuth, orAuth, claudeAuth, cfg.Providers.Anthropic.Enabled, cfg.CodexUI, cfg.ClaudeUI, cfg.OpenRouterUI, AppVersion), tea.WithAltScreen())
+	p := tea.NewProgram(tui.New(
+		tui.CodexProvider{Auth: codexAuth, UI: cfg.CodexUI},
+		tui.OpenRouterProvider{Auth: orAuth, UI: cfg.OpenRouterUI},
+		tui.ClaudeProvider{Auth: claudeAuth, Enabled: cfg.Providers.Anthropic.Enabled, UI: cfg.ClaudeUI},
+		AppVersion,
+	), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		slog.Error("tui exited with error", "error", err)
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

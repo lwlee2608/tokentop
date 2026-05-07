@@ -2,6 +2,7 @@ package claude
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"time"
 )
+
+var ErrUnauthorized = errors.New("unauthorized")
 
 type Usage struct {
 	SubscriptionType string
@@ -68,6 +71,9 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
+		if resp.StatusCode == http.StatusUnauthorized {
+			return nil, fmt.Errorf("Anthropic API %s: %w", formatErrorBody(resp.StatusCode, body), ErrUnauthorized)
+		}
 		return nil, fmt.Errorf("Anthropic API %s", formatErrorBody(resp.StatusCode, body))
 	}
 	io.Copy(io.Discard, resp.Body)

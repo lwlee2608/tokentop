@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -68,23 +69,40 @@ type Model struct {
 	orRetries int
 	orMetric  orMetric
 
-	claudeAuth    *claude.Auth
-	claudeUsage   *claude.Usage
-	claudeErr     string
-	claudeRetries int
-	claudeEnabled bool
+	claudeAuth        *claude.Auth
+	claudeUsage       *claude.Usage
+	claudeErr         string
+	claudeRetries     int
+	claudeEnabled     bool
+	claudeAuthFailed  bool
 }
 
-func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth, claudeEnabled bool, codexUIConfig config.CodexUIConfig, claudeUIConfig config.ClaudeUIConfig, orUIConfig config.OpenRouterUIConfig, version string) Model {
+type CodexProvider struct {
+	Auth *codex.Auth
+	UI   config.CodexUIConfig
+}
+
+type OpenRouterProvider struct {
+	Auth *openrouter.Auth
+	UI   config.OpenRouterUIConfig
+}
+
+type ClaudeProvider struct {
+	Auth    *claude.Auth
+	Enabled bool
+	UI      config.ClaudeUIConfig
+}
+
+func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, version string) Model {
 	return Model{
-		codexAuth:      codexAuth,
-		orAuth:         orAuth,
-		claudeAuth:     claudeAuth,
-		claudeEnabled:  claudeEnabled,
-		codexUIConfig:  codexUIConfig,
-		claudeUIConfig: claudeUIConfig,
-		orUIConfig:     orUIConfig,
-		orMetric:       parseMetric(orUIConfig.Metric),
+		codexAuth:      cx.Auth,
+		orAuth:         or.Auth,
+		claudeAuth:     cl.Auth,
+		claudeEnabled:  cl.Enabled,
+		codexUIConfig:  cx.UI,
+		claudeUIConfig: cl.UI,
+		orUIConfig:     or.UI,
+		orMetric:       parseMetric(or.UI.Metric),
 		version:        version,
 		nextRefresh:    time.Now().Add(refreshInterval),
 	}
@@ -194,12 +212,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.err != nil {
 			m.claudeErr = msg.err.Error()
+			m.claudeAuthFailed = errors.Is(msg.err, claude.ErrUnauthorized)
 			if cmd := m.scheduleRetry("claude", &m.claudeRetries, msg.err, func(g uint64) tea.Msg { return claudeRetryMsg{gen: g} }); cmd != nil {
 				return m, cmd
 			}
 		} else {
 			m.claudeUsage = msg.usage
 			m.claudeErr = ""
+			m.claudeAuthFailed = false
 			m.claudeRetries = 0
 			m.lastFetch = time.Now()
 			slog.Debug("claude usage refresh succeeded")

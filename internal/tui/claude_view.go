@@ -13,6 +13,7 @@ import (
 const (
 	claudeSessionWindow = 5 * time.Hour
 	claudeWeeklyWindow  = 7 * 24 * time.Hour
+	claudeLoginHint     = "  Hint: run `claude /login` to sign in"
 )
 
 func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) float64 {
@@ -32,7 +33,7 @@ func (m Model) claudeSectionBody() string {
 	if m.claudeAuth == nil && m.claudeEnabled {
 		b.WriteString(pctStyle(red).Render("  ⚠️  credentials not found"))
 		b.WriteByte('\n')
-		b.WriteString(dimStyle.Render("  Hint: run `claude /login` to sign in"))
+		b.WriteString(dimStyle.Render(claudeLoginHint))
 		b.WriteByte('\n')
 		return b.String()
 	}
@@ -50,8 +51,8 @@ func (m Model) claudeSectionBody() string {
 		}
 		b.WriteString(pctStyle(c).Render(fmt.Sprintf("  ⚠️  %s (retry %d/%d)", m.claudeErr, m.claudeRetries, maxRetries)))
 		b.WriteByte('\n')
-		if strings.Contains(m.claudeErr, "401") {
-			b.WriteString(dimStyle.Render("  Hint: run `claude /login` to refresh credentials"))
+		if m.claudeAuthFailed {
+			b.WriteString(dimStyle.Render(claudeLoginHint))
 			b.WriteByte('\n')
 		}
 		if m.claudeUsage == nil {
