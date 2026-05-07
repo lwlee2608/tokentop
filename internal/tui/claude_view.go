@@ -15,7 +15,7 @@ const (
 	claudeWeeklyWindow  = 7 * 24 * time.Hour
 )
 
-var claudeLoginHintLine = "  Hint: " + claude.LoginHint
+const claudeLoginHintLine = "  Hint: " + claude.LoginHint
 
 func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) float64 {
 	if !m.claudeUIConfig.PaceTick {

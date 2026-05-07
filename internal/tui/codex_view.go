@@ -10,7 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var codexLoginHintLine = "  Hint: " + codex.LoginHint
+const codexLoginHintLine = "  Hint: " + codex.LoginHint
 
 func (m Model) codexElapsedPercent(w *codex.UsageWindow) float64 {
 	if !m.codexUIConfig.PaceTick || w == nil || w.LimitWindowSeconds <= 0 {
