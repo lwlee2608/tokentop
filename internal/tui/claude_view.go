@@ -29,6 +29,14 @@ func (m Model) claudeSection() string {
 func (m Model) claudeSectionBody() string {
 	var b strings.Builder
 
+	if m.claudeAuth == nil && m.claudeEnabled {
+		b.WriteString(pctStyle(red).Render("  ⚠️  credentials not found"))
+		b.WriteByte('\n')
+		b.WriteString(dimStyle.Render("  Hint: run `claude /login` to sign in"))
+		b.WriteByte('\n')
+		return b.String()
+	}
+
 	if m.claudeUsage == nil && m.claudeErr == "" {
 		b.WriteString(dimStyle.Render("  Loading..."))
 		b.WriteByte('\n')
@@ -42,6 +50,10 @@ func (m Model) claudeSectionBody() string {
 		}
 		b.WriteString(pctStyle(c).Render(fmt.Sprintf("  ⚠️  %s (retry %d/%d)", m.claudeErr, m.claudeRetries, maxRetries)))
 		b.WriteByte('\n')
+		if strings.Contains(m.claudeErr, "401") {
+			b.WriteString(dimStyle.Render("  Hint: run `claude /login` to refresh credentials"))
+			b.WriteByte('\n')
+		}
 		if m.claudeUsage == nil {
 			return b.String()
 		}

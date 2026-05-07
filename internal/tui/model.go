@@ -72,13 +72,15 @@ type Model struct {
 	claudeUsage   *claude.Usage
 	claudeErr     string
 	claudeRetries int
+	claudeEnabled bool
 }
 
-func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth, codexUIConfig config.CodexUIConfig, claudeUIConfig config.ClaudeUIConfig, orUIConfig config.OpenRouterUIConfig, version string) Model {
+func New(codexAuth *codex.Auth, orAuth *openrouter.Auth, claudeAuth *claude.Auth, claudeEnabled bool, codexUIConfig config.CodexUIConfig, claudeUIConfig config.ClaudeUIConfig, orUIConfig config.OpenRouterUIConfig, version string) Model {
 	return Model{
 		codexAuth:      codexAuth,
 		orAuth:         orAuth,
 		claudeAuth:     claudeAuth,
+		claudeEnabled:  claudeEnabled,
 		codexUIConfig:  codexUIConfig,
 		claudeUIConfig: claudeUIConfig,
 		orUIConfig:     orUIConfig,
@@ -250,7 +252,7 @@ func (m Model) barWidth() int {
 func (m Model) View() string {
 	var b strings.Builder
 
-	if m.claudeAuth != nil {
+	if m.claudeAuth != nil || m.claudeEnabled {
 		b.WriteString(m.claudeSection())
 	}
 	if m.codexAuth != nil {
