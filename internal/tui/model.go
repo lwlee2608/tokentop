@@ -65,11 +65,13 @@ type Model struct {
 	codexEnabled    bool
 	codexAuthFailed bool
 
-	orAuth    *openrouter.Auth
-	orUsage   *openrouter.Usage
-	orErr     string
-	orRetries int
-	orMetric  orMetric
+	orAuth       *openrouter.Auth
+	orUsage      *openrouter.Usage
+	orErr        string
+	orRetries    int
+	orMetric     orMetric
+	orEnabled    bool
+	orAuthFailed bool
 
 	claudeAuth       *claude.Auth
 	claudeUsage      *claude.Usage
@@ -86,8 +88,9 @@ type CodexProvider struct {
 }
 
 type OpenRouterProvider struct {
-	Auth *openrouter.Auth
-	UI   config.OpenRouterUIConfig
+	Auth    *openrouter.Auth
+	Enabled bool
+	UI      config.OpenRouterUIConfig
 }
 
 type ClaudeProvider struct {
@@ -101,6 +104,7 @@ func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, version str
 		codexAuth:      cx.Auth,
 		codexEnabled:   cx.Enabled,
 		orAuth:         or.Auth,
+		orEnabled:      or.Enabled,
 		claudeAuth:     cl.Auth,
 		claudeEnabled:  cl.Enabled,
 		codexUIConfig:  cx.UI,
@@ -192,6 +196,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.err != nil {
 			m.orErr = msg.err.Error()
+			m.orAuthFailed = errors.Is(msg.err, openrouter.ErrUnauthorized)
 			if cmd := m.scheduleRetry("openrouter", &m.orRetries, msg.err, func(g uint64) tea.Msg { return orRetryMsg{gen: g} }); cmd != nil {
 				return m, cmd
 			}
@@ -207,6 +212,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.orUsage = msg.usage
 			m.orErr = ""
+			m.orAuthFailed = false
 			m.orRetries = 0
 			m.lastFetch = time.Now()
 			slog.Debug("openrouter usage refresh succeeded")
@@ -284,7 +290,7 @@ func (m Model) View() string {
 	if m.codexAuth != nil || m.codexEnabled {
 		b.WriteString(m.codexSection())
 	}
-	if m.orAuth != nil {
+	if m.orAuth != nil || m.orEnabled {
 		b.WriteString(m.orSection())
 	}
 

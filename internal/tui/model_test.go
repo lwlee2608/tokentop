@@ -166,6 +166,28 @@ func TestClaudeSectionShowsLoginHintOnAuthFailure(t *testing.T) {
 	assert.Contains(t, got, claude.LoginHint)
 }
 
+func TestOpenRouterSectionShowsHintWhenCredentialsMissing(t *testing.T) {
+	forceTrueColorProfile(t)
+	m := Model{width: 85, orEnabled: true}
+	got := m.orSection()
+	assert.Contains(t, got, "credentials not found")
+	assert.Contains(t, got, openrouter.LoginHint)
+}
+
+func TestOpenRouterSectionShowsHintOnAuthFailure(t *testing.T) {
+	forceTrueColorProfile(t)
+	m := Model{
+		width:        85,
+		orEnabled:    true,
+		orAuth:       &openrouter.Auth{APIKey: "sk-or-bad"},
+		orErr:        "OpenRouter API /key 401: invalid token: unauthorized",
+		orAuthFailed: true,
+	}
+	got := m.orSection()
+	assert.Contains(t, got, "401")
+	assert.Contains(t, got, openrouter.LoginHint)
+}
+
 func TestOpenRouterSectionRenderSnapshot(t *testing.T) {
 	forceTrueColorProfile(t)
 

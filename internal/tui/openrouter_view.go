@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lwlee2608/tokentop/pkg/openrouter"
 	"github.com/mattn/go-runewidth"
 )
+
+const orLoginHintLine = "  Hint: " + openrouter.LoginHint
 
 func redactAPIKey(key string) string {
 	if len(key) <= 8 {
@@ -62,6 +65,14 @@ func (m Model) orSection() string {
 func (m Model) orSectionBody() string {
 	var b strings.Builder
 
+	if m.orAuth == nil && m.orEnabled {
+		b.WriteString(pctStyle(red).Render("  ⚠️  credentials not found"))
+		b.WriteByte('\n')
+		b.WriteString(dimStyle.Render(orLoginHintLine))
+		b.WriteByte('\n')
+		return b.String()
+	}
+
 	if m.orUsage == nil && m.orErr == "" {
 		b.WriteString(dimStyle.Render("  Loading..."))
 		b.WriteByte('\n')
@@ -75,6 +86,10 @@ func (m Model) orSectionBody() string {
 		}
 		b.WriteString(pctStyle(c).Render(fmt.Sprintf("  ⚠️  %s (retry %d/%d)", m.orErr, m.orRetries, maxRetries)))
 		b.WriteByte('\n')
+		if m.orAuthFailed {
+			b.WriteString(dimStyle.Render(orLoginHintLine))
+			b.WriteByte('\n')
+		}
 		if m.orUsage == nil {
 			return b.String()
 		}

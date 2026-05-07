@@ -2,6 +2,7 @@ package openrouter
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -9,6 +10,8 @@ import (
 	"sort"
 	"time"
 )
+
+var ErrUnauthorized = errors.New("unauthorized")
 
 var baseURL = "https://openrouter.ai/api/v1"
 
@@ -383,6 +386,9 @@ func doJSON(client *http.Client, auth *Auth, method, url string, target any) err
 
 	if resp.StatusCode != http.StatusOK {
 		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
+		if resp.StatusCode == http.StatusUnauthorized {
+			return fmt.Errorf("OpenRouter API %s %s: %w", url, formatErrorBody(resp.StatusCode, body), ErrUnauthorized)
+		}
 		return fmt.Errorf("OpenRouter API %s %s", url, formatErrorBody(resp.StatusCode, body))
 	}
 
