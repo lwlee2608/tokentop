@@ -69,12 +69,12 @@ type Model struct {
 	orRetries int
 	orMetric  orMetric
 
-	claudeAuth        *claude.Auth
-	claudeUsage       *claude.Usage
-	claudeErr         string
-	claudeRetries     int
-	claudeEnabled     bool
-	claudeAuthFailed  bool
+	claudeAuth       *claude.Auth
+	claudeUsage      *claude.Usage
+	claudeErr        string
+	claudeRetries    int
+	claudeEnabled    bool
+	claudeAuthFailed bool
 }
 
 type CodexProvider struct {

@@ -14,6 +14,8 @@ import (
 
 var ErrUnauthorized = errors.New("unauthorized")
 
+const LoginHint = "run `claude /login` to sign in"
+
 type Usage struct {
 	SubscriptionType string
 	RateLimitTier    string

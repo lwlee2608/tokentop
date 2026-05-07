@@ -106,7 +106,7 @@ func main() {
 		if err != nil {
 			slog.Warn("claude auth unavailable", "error", err)
 			fmt.Fprintf(os.Stderr, "Warning: claude: %v\n", err)
-			fmt.Fprintf(os.Stderr, "Hint: run `claude /login` to sign in\n")
+			fmt.Fprintln(os.Stderr, "Hint:", claude.LoginHint)
 		} else {
 			claudeAuth = auth
 			slog.Info("claude provider enabled")
