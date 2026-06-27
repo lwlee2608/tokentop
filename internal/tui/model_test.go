@@ -94,8 +94,8 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 			PaceTick: true,
 		},
 		claudeUsage: &claude.Usage{
-			SubscriptionType: "Pro",
-			RateLimitTier:    "standard",
+			SubscriptionType: "Max",
+			RateLimitTier:    "default_claude_max_5x",
 			SessionLimit: &claude.RateWindow{
 				Utilization: 0.42,
 				ResetAt:     now.Add(2 * time.Hour),

@@ -64,7 +64,7 @@ func (m Model) claudeSectionBody() string {
 	u := m.claudeUsage
 	bw := m.barWidth()
 
-	b.WriteString(dimStyle.Render(fmt.Sprintf("  Plan: %s | Tier: %s", u.SubscriptionType, u.RateLimitTier)))
+	b.WriteString(dimStyle.Render(fmt.Sprintf("  Plan: %s | Tier: %s", u.SubscriptionType, formatClaudeTier(u.RateLimitTier))))
 	b.WriteByte('\n')
 
 	if w := u.SessionLimit; w != nil {
@@ -85,6 +85,19 @@ func (m Model) claudeSectionBody() string {
 
 	b.WriteByte('\n')
 	return b.String()
+}
+
+func formatClaudeTier(tier string) string {
+	if rest, ok := strings.CutPrefix(tier, "default_claude_max_"); ok {
+		return "Max (" + rest + ")"
+	}
+	switch tier {
+	case "default_claude_pro":
+		return "Pro"
+	case "default_claude_ai":
+		return "Free"
+	}
+	return tier
 }
 
 func fetchClaudeUsage(auth *claude.Auth, gen uint64) tea.Cmd {
