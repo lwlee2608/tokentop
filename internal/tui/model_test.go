@@ -84,6 +84,26 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 	assert.Equal(t, string(want), got, "codex section mismatch")
 }
 
+func TestFormatClaudeTier(t *testing.T) {
+	tests := []struct {
+		name string
+		tier string
+		want string
+	}{
+		{name: "max 20x", tier: "default_claude_max_20x", want: "Max (20x)"},
+		{name: "max 5x", tier: "default_claude_max_5x", want: "Max (5x)"},
+		{name: "ai pro", tier: "default_claude_ai", want: "Pro"},
+		{name: "zero", tier: "default_claude_zero", want: "Zero"},
+		{name: "unknown", tier: "default_claude_team", want: "default_claude_team"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, formatClaudeTier(tt.tier))
+		})
+	}
+}
+
 func TestClaudeSectionRenderSnapshot(t *testing.T) {
 	forceTrueColorProfile(t)
 
@@ -94,8 +114,8 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 			PaceTick: true,
 		},
 		claudeUsage: &claude.Usage{
-			SubscriptionType: "Pro",
-			RateLimitTier:    "standard",
+			SubscriptionType: "Max",
+			RateLimitTier:    "default_claude_max_5x",
 			SessionLimit: &claude.RateWindow{
 				Utilization: 0.42,
 				ResetAt:     now.Add(2 * time.Hour),
