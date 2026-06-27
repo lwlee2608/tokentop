@@ -87,15 +87,30 @@ func (m Model) claudeSectionBody() string {
 	return b.String()
 }
 
+type claudeTier string
+
+const (
+	tierMax5x  claudeTier = "default_claude_max_5x"
+	tierMax20x claudeTier = "default_claude_max_20x"
+	tierPro    claudeTier = "default_claude_pro"
+	tierFree   claudeTier = "default_claude_ai"
+
+	tierMaxPrefix = "default_claude_max_"
+)
+
 func formatClaudeTier(tier string) string {
-	if rest, ok := strings.CutPrefix(tier, "default_claude_max_"); ok {
-		return "Max (" + rest + ")"
-	}
-	switch tier {
-	case "default_claude_pro":
+	switch claudeTier(tier) {
+	case tierMax5x:
+		return "Max (5x)"
+	case tierMax20x:
+		return "Max (20x)"
+	case tierPro:
 		return "Pro"
-	case "default_claude_ai":
+	case tierFree:
 		return "Free"
+	}
+	if rest, ok := strings.CutPrefix(tier, tierMaxPrefix); ok {
+		return "Max (" + rest + ")"
 	}
 	return tier
 }
