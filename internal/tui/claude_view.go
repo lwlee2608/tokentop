@@ -10,11 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-const (
-	claudeSessionWindow = 5 * time.Hour
-	claudeWeeklyWindow  = 7 * 24 * time.Hour
-)
-
 const claudeLoginHintLine = "  Hint: " + claude.LoginHint
 
 func (m Model) claudeElapsedPercent(resetAt time.Time, window time.Duration) float64 {
@@ -67,24 +62,51 @@ func (m Model) claudeSectionBody() string {
 	b.WriteString(dimStyle.Render(fmt.Sprintf("  Plan: %s | Tier: %s", u.SubscriptionType, formatClaudeTier(u.RateLimitTier))))
 	b.WriteByte('\n')
 
-	if w := u.SessionLimit; w != nil {
-		resetInfo := ""
-		if !w.ResetAt.IsZero() {
-			resetInfo = timeUntil(w.ResetAt)
-		}
-		b.WriteString(renderCompactBar("5h Limit", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeSessionWindow), bw, resetInfo))
+	labels := make([]string, len(u.Limits))
+	labelWidth := 0
+	for i, l := range u.Limits {
+		labels[i] = claudeLimitLabel(l)
+		labelWidth = max(labelWidth, len(labels[i]))
 	}
 
-	if w := u.WeeklyLimit; w != nil {
+	for i, l := range u.Limits {
 		resetInfo := ""
-		if !w.ResetAt.IsZero() {
-			resetInfo = timeUntil(w.ResetAt)
+		if !l.ResetAt.IsZero() {
+			resetInfo = timeUntil(l.ResetAt)
 		}
-		b.WriteString(renderCompactBar("Weekly  ", w.Utilization*100, m.claudeElapsedPercent(w.ResetAt, claudeWeeklyWindow), bw, resetInfo))
+		pace := -1.0
+		if d := claudeLimitWindow(l); d > 0 {
+			pace = m.claudeElapsedPercent(l.ResetAt, d)
+		}
+		b.WriteString(renderCompactBar(fmt.Sprintf("%-*s", labelWidth, labels[i]), l.Percent, pace, bw, resetInfo))
 	}
 
 	b.WriteByte('\n')
 	return b.String()
+}
+
+func claudeLimitLabel(l claude.Limit) string {
+	label := l.Group
+	switch l.Group {
+	case "session":
+		label = "5h Limit"
+	case "weekly":
+		label = "Weekly"
+	}
+	if l.Model != "" {
+		label += " (" + l.Model + ")"
+	}
+	return label
+}
+
+func claudeLimitWindow(l claude.Limit) time.Duration {
+	switch l.Group {
+	case "session":
+		return 5 * time.Hour
+	case "weekly":
+		return 7 * 24 * time.Hour
+	}
+	return 0
 }
 
 type claudeTier string

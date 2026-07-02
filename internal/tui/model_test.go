@@ -116,13 +116,10 @@ func TestClaudeSectionRenderSnapshot(t *testing.T) {
 		claudeUsage: &claude.Usage{
 			SubscriptionType: "Max",
 			RateLimitTier:    "default_claude_max_5x",
-			SessionLimit: &claude.RateWindow{
-				Utilization: 0.42,
-				ResetAt:     now.Add(2 * time.Hour),
-			},
-			WeeklyLimit: &claude.RateWindow{
-				Utilization: 0.75,
-				ResetAt:     now.Add(4 * 24 * time.Hour),
+			Limits: []claude.Limit{
+				{Kind: "session", Group: "session", Percent: 42, ResetAt: now.Add(2 * time.Hour)},
+				{Kind: "weekly_all", Group: "weekly", Percent: 75, ResetAt: now.Add(4 * 24 * time.Hour)},
+				{Kind: "weekly_scoped", Group: "weekly", Model: "Fable", Percent: 10, ResetAt: now.Add(4 * 24 * time.Hour)},
 			},
 		},
 	}
