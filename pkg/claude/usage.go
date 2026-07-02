@@ -7,8 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -19,14 +17,15 @@ const LoginHint = "run `claude /login` to sign in"
 type Usage struct {
 	SubscriptionType string
 	RateLimitTier    string
-	SessionLimit     *RateWindow
-	WeeklyLimit      *RateWindow
+	Limits           []Limit
 }
 
-type RateWindow struct {
-	Utilization float64
-	Status      string
-	ResetAt     time.Time
+type Limit struct {
+	Kind    string
+	Group   string
+	Model   string
+	Percent float64
+	ResetAt time.Time
 }
 
 func formatErrorBody(status int, body []byte) string {
@@ -49,15 +48,12 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 	logger := slog.With("provider", "claude")
 	started := time.Now()
 
-	// Make a minimal API call to get rate limit headers
-	body := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`
-	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", strings.NewReader(body))
+	req, err := http.NewRequest("GET", "https://api.anthropic.com/api/oauth/usage", nil)
 	if err != nil {
 		logger.Error("build request failed", "error", err)
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+auth.AccessToken)
-	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("anthropic-version", "2023-06-01")
 	req.Header.Set("anthropic-beta", "oauth-2025-04-20")
 	req.Header.Set("anthropic-dangerous-direct-browser-access", "true")
@@ -70,55 +66,69 @@ func FetchUsage(auth *Auth) (*Usage, error) {
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Warn("read body failed", "error", err)
+		return nil, err
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
 		logger.Warn("request returned non-ok status", "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "body", string(body))
 		if resp.StatusCode == http.StatusUnauthorized {
 			return nil, fmt.Errorf("Anthropic API %s: %w", formatErrorBody(resp.StatusCode, body), ErrUnauthorized)
 		}
 		return nil, fmt.Errorf("Anthropic API %s", formatErrorBody(resp.StatusCode, body))
 	}
-	io.Copy(io.Discard, resp.Body)
 
-	usage := &Usage{
-		SubscriptionType: auth.SubscriptionType,
-		RateLimitTier:    auth.RateLimitTier,
-	}
-
-	if v := resp.Header.Get("anthropic-ratelimit-unified-5h-utilization"); v != "" {
-		usage.SessionLimit = parseRateWindow(
-			v,
-			resp.Header.Get("anthropic-ratelimit-unified-5h-status"),
-			resp.Header.Get("anthropic-ratelimit-unified-5h-reset"),
-		)
-	}
-
-	if v := resp.Header.Get("anthropic-ratelimit-unified-7d-utilization"); v != "" {
-		usage.WeeklyLimit = parseRateWindow(
-			v,
-			resp.Header.Get("anthropic-ratelimit-unified-7d-status"),
-			resp.Header.Get("anthropic-ratelimit-unified-7d-reset"),
-		)
+	limits, err := parseLimits(body)
+	if err != nil {
+		logger.Warn("parse usage failed", "error", err)
+		return nil, err
 	}
 
 	logger.Debug("request completed",
 		"status", resp.StatusCode,
 		"duration_ms", time.Since(started).Milliseconds(),
-		"session_util", resp.Header.Get("anthropic-ratelimit-unified-5h-utilization"),
-		"weekly_util", resp.Header.Get("anthropic-ratelimit-unified-7d-utilization"),
+		"limits", len(limits),
 	)
 
-	return usage, nil
+	return &Usage{
+		SubscriptionType: auth.SubscriptionType,
+		RateLimitTier:    auth.RateLimitTier,
+		Limits:           limits,
+	}, nil
 }
 
-func parseRateWindow(utilization, status, resetEpoch string) *RateWindow {
-	v, err := strconv.ParseFloat(utilization, 64)
-	if err != nil {
-		return nil
+func parseLimits(body []byte) ([]Limit, error) {
+	var parsed struct {
+		Limits []struct {
+			Kind     string    `json:"kind"`
+			Group    string    `json:"group"`
+			Percent  float64   `json:"percent"`
+			ResetsAt time.Time `json:"resets_at"`
+			Scope    *struct {
+				Model *struct {
+					DisplayName string `json:"display_name"`
+				} `json:"model"`
+			} `json:"scope"`
+		} `json:"limits"`
 	}
-	w := &RateWindow{Status: status, Utilization: v}
-	if v, err := strconv.ParseInt(resetEpoch, 10, 64); err == nil && v > 0 {
-		w.ResetAt = time.Unix(v, 0)
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return nil, fmt.Errorf("parsing usage response: %w", err)
 	}
-	return w
+
+	limits := make([]Limit, 0, len(parsed.Limits))
+	for _, l := range parsed.Limits {
+		limit := Limit{
+			Kind:    l.Kind,
+			Group:   l.Group,
+			Percent: l.Percent,
+			ResetAt: l.ResetsAt,
+		}
+		if l.Scope != nil && l.Scope.Model != nil {
+			limit.Model = l.Scope.Model.DisplayName
+		}
+		limits = append(limits, limit)
+	}
+	return limits, nil
 }
