@@ -86,17 +86,16 @@ func (m Model) claudeSectionBody() string {
 }
 
 func claudeLimitLabel(l claude.Limit) string {
-	label := l.Group
+	if l.Model != "" {
+		return l.Model
+	}
 	switch l.Group {
 	case "session":
-		label = "5h Limit"
+		return "5h Limit"
 	case "weekly":
-		label = "Weekly"
+		return "Weekly"
 	}
-	if l.Model != "" {
-		label += " (" + l.Model + ")"
-	}
-	return label
+	return l.Group
 }
 
 func claudeLimitWindow(l claude.Limit) time.Duration {
