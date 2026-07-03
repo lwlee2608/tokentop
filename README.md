@@ -1,4 +1,4 @@
-# tokentop
+# Tokentop
 
 [![CI](https://github.com/lwlee2608/tokentop/actions/workflows/ci.yml/badge.svg)](https://github.com/lwlee2608/tokentop/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/lwlee2608/tokentop?sort=semver)](https://github.com/lwlee2608/tokentop/releases/latest)
