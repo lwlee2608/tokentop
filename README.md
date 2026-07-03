@@ -8,7 +8,7 @@
 
 A terminal dashboard for monitoring your API usage in real time. Supports [Claude Code](https://claude.com/claude-code), [OpenAI Codex](https://chatgpt.com/codex), and [OpenRouter](https://openrouter.ai/).
 
-![tokentop](img/tokentop3.jpg)
+![tokentop](img/tokentop4.jpg)
 
 ## Install
 
