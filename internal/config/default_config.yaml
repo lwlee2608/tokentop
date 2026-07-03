@@ -2,6 +2,9 @@ log:
   level: info
   path: ""
 
+refresh:
+  interval_seconds: 300
+
 providers:
   codex:
     enabled: true
@@ -23,4 +26,3 @@ openrouter_ui:
   top_models: true
   api_keys: false
   metric: spend  # spend | requests | tokens
-

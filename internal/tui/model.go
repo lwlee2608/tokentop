@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	refreshInterval = 5 * time.Minute
-	retryDelay      = 5 * time.Second
-	maxRetries      = 3
+	retryDelay = 5 * time.Second
+	maxRetries = 3
 )
 
 type tickMsg time.Time
@@ -49,14 +48,15 @@ type claudeUsageMsg struct {
 type claudeRetryMsg struct{ gen uint64 }
 
 type Model struct {
-	version        string
-	width          int
-	lastFetch      time.Time
-	nextRefresh    time.Time
-	gen            uint64
-	codexUIConfig  config.CodexUIConfig
-	claudeUIConfig config.ClaudeUIConfig
-	orUIConfig     config.OpenRouterUIConfig
+	version         string
+	width           int
+	lastFetch       time.Time
+	nextRefresh     time.Time
+	refreshInterval time.Duration
+	gen             uint64
+	codexUIConfig   config.CodexUIConfig
+	claudeUIConfig  config.ClaudeUIConfig
+	orUIConfig      config.OpenRouterUIConfig
 
 	codexAuth       *codex.Auth
 	codexUsage      *codex.Usage
@@ -99,25 +99,27 @@ type ClaudeProvider struct {
 	UI      config.ClaudeUIConfig
 }
 
-func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, version string) Model {
+func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, refresh config.RefreshConfig, version string) Model {
+	refreshInterval := time.Duration(refresh.IntervalSeconds) * time.Second
 	return Model{
-		codexAuth:      cx.Auth,
-		codexEnabled:   cx.Enabled,
-		orAuth:         or.Auth,
-		orEnabled:      or.Enabled,
-		claudeAuth:     cl.Auth,
-		claudeEnabled:  cl.Enabled,
-		codexUIConfig:  cx.UI,
-		claudeUIConfig: cl.UI,
-		orUIConfig:     or.UI,
-		orMetric:       parseMetric(or.UI.Metric),
-		version:        version,
-		nextRefresh:    time.Now().Add(refreshInterval),
+		codexAuth:       cx.Auth,
+		codexEnabled:    cx.Enabled,
+		orAuth:          or.Auth,
+		orEnabled:       or.Enabled,
+		claudeAuth:      cl.Auth,
+		claudeEnabled:   cl.Enabled,
+		codexUIConfig:   cx.UI,
+		claudeUIConfig:  cl.UI,
+		orUIConfig:      or.UI,
+		orMetric:        parseMetric(or.UI.Metric),
+		version:         version,
+		refreshInterval: refreshInterval,
+		nextRefresh:     time.Now().Add(refreshInterval),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{tick(), countdown()}
+	cmds := []tea.Cmd{m.tick(), countdown()}
 	if m.codexAuth != nil {
 		cmds = append(cmds, fetchCodexUsage(m.codexAuth, m.gen))
 	}
@@ -255,7 +257,7 @@ func (m Model) scheduleRetry(provider string, retries *int, err error, mkMsg fun
 }
 
 func (m Model) refresh() (tea.Model, tea.Cmd) {
-	m.nextRefresh = time.Now().Add(refreshInterval)
+	m.nextRefresh = time.Now().Add(m.refreshInterval)
 	m.gen++
 	m.codexRetries = 0
 	m.orRetries = 0
@@ -271,7 +273,7 @@ func (m Model) refresh() (tea.Model, tea.Cmd) {
 	if m.claudeAuth != nil {
 		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth, m.gen))
 	}
-	cmds = append(cmds, tick())
+	cmds = append(cmds, m.tick())
 	return m, tea.Batch(cmds...)
 }
 
@@ -439,8 +441,8 @@ func fetchORUsage(auth *openrouter.Auth, gen uint64) tea.Cmd {
 	}
 }
 
-func tick() tea.Cmd {
-	return tea.Tick(refreshInterval, func(t time.Time) tea.Msg {
+func (m Model) tick() tea.Cmd {
+	return tea.Tick(m.refreshInterval, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
 }

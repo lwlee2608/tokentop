@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 type Config struct {
 	Log          LogConfig          `mapstructure:"log"`
+	Refresh      RefreshConfig      `mapstructure:"refresh"`
 	Providers    ProvidersConfig    `mapstructure:"providers"`
 	CodexUI      CodexUIConfig      `mapstructure:"codex_ui"`
 	ClaudeUI     ClaudeUIConfig     `mapstructure:"claude_ui"`
@@ -24,6 +26,10 @@ type Config struct {
 type LogConfig struct {
 	Level string `mapstructure:"level"`
 	Path  string `mapstructure:"path"`
+}
+
+type RefreshConfig struct {
+	IntervalSeconds int `mapstructure:"interval_seconds"`
 }
 
 type ProvidersConfig struct {
@@ -70,6 +76,9 @@ func Load() (*Config, error) {
 	a.AutomaticEnv()
 
 	cfg := &Config{
+		Refresh: RefreshConfig{
+			IntervalSeconds: 300,
+		},
 		CodexUI: CodexUIConfig{
 			PaceTick: true,
 		},
@@ -106,6 +115,9 @@ func Load() (*Config, error) {
 		if err := a.Unmarshal(cfg); err != nil {
 			return nil, err
 		}
+	}
+	if cfg.Refresh.IntervalSeconds <= 0 {
+		return nil, fmt.Errorf("refresh.interval_seconds must be greater than 0")
 	}
 
 	return cfg, nil
