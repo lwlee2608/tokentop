@@ -125,6 +125,7 @@ func main() {
 		tui.CodexProvider{Auth: codexAuth, Enabled: cfg.Providers.Codex.Enabled, UI: cfg.CodexUI},
 		tui.OpenRouterProvider{Auth: orAuth, Enabled: cfg.Providers.OpenRouter.Enabled, UI: cfg.OpenRouterUI},
 		tui.ClaudeProvider{Auth: claudeAuth, Enabled: cfg.Providers.Anthropic.Enabled, UI: cfg.ClaudeUI},
+		cfg.Refresh,
 		AppVersion,
 	), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {

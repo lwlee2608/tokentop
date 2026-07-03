@@ -17,6 +17,9 @@ log:
   level: info
   path: ""
 
+refresh:
+  interval_seconds: 300
+
 providers:
   codex:
     enabled: true
@@ -48,6 +51,12 @@ openrouter_ui:
 |---------|--------|---------|-------------|
 | `level` | string | `info`  | One of `debug`, `info`, `warn`, `error`, or `off` to disable logging entirely. |
 | `path`  | string | `""`    | Log file path. When empty, logs go to `$XDG_STATE_HOME/tokentop/tokentop.log` (or `~/.local/state/tokentop/tokentop.log`). |
+
+### `refresh`
+
+| Key                | Type | Default | Description |
+|--------------------|------|---------|-------------|
+| `interval_seconds` | int  | `300`   | Seconds between automatic usage refreshes. Must be greater than zero. |
 
 ### `providers`
 
@@ -110,4 +119,3 @@ openrouter_ui:
   top_models: false
   api_keys: false
 ```
-
