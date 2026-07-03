@@ -8,10 +8,10 @@ refresh:
 providers:
   codex:
     enabled: true
-  openrouter:
-    enabled: true
   anthropic:
     enabled: true
+  openrouter:
+    enabled: false
 
 codex_ui:
   code_review: false
