@@ -18,6 +18,7 @@ type Config struct {
 	Log          LogConfig          `mapstructure:"log"`
 	Refresh      RefreshConfig      `mapstructure:"refresh"`
 	Providers    ProvidersConfig    `mapstructure:"providers"`
+	UI           UIConfig           `mapstructure:"ui"`
 	CodexUI      CodexUIConfig      `mapstructure:"codex_ui"`
 	ClaudeUI     ClaudeUIConfig     `mapstructure:"claude_ui"`
 	OpenRouterUI OpenRouterUIConfig `mapstructure:"openrouter_ui"`
@@ -40,6 +41,10 @@ type ProvidersConfig struct {
 
 type ProviderConfig struct {
 	Enabled bool `mapstructure:"enabled"`
+}
+
+type UIConfig struct {
+	DurationDays bool `mapstructure:"duration_days"`
 }
 
 type CodexUIConfig struct {

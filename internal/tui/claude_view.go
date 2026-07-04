@@ -72,13 +72,13 @@ func (m Model) claudeSectionBody() string {
 	for i, l := range u.Limits {
 		resetInfo := ""
 		if !l.ResetAt.IsZero() {
-			resetInfo = timeUntil(l.ResetAt)
+			resetInfo = m.timeUntil(l.ResetAt)
 		}
 		pace := -1.0
 		if d := claudeLimitWindow(l); d > 0 {
 			pace = m.claudeElapsedPercent(l.ResetAt, d)
 		}
-		b.WriteString(renderCompactBar(fmt.Sprintf("%-*s", labelWidth, labels[i]), l.Percent, pace, bw, resetInfo))
+		b.WriteString(m.renderCompactBar(fmt.Sprintf("%-*s", labelWidth, labels[i]), l.Percent, pace, bw, resetInfo))
 	}
 
 	b.WriteByte('\n')

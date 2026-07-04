@@ -54,6 +54,7 @@ type Model struct {
 	nextRefresh     time.Time
 	refreshInterval time.Duration
 	gen             uint64
+	uiConfig        config.UIConfig
 	codexUIConfig   config.CodexUIConfig
 	claudeUIConfig  config.ClaudeUIConfig
 	orUIConfig      config.OpenRouterUIConfig
@@ -99,7 +100,7 @@ type ClaudeProvider struct {
 	UI      config.ClaudeUIConfig
 }
 
-func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, refresh config.RefreshConfig, version string) Model {
+func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, ui config.UIConfig, refresh config.RefreshConfig, version string) Model {
 	refreshInterval := time.Duration(refresh.IntervalSeconds) * time.Second
 	return Model{
 		codexAuth:       cx.Auth,
@@ -108,6 +109,7 @@ func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, refresh con
 		orEnabled:       or.Enabled,
 		claudeAuth:      cl.Auth,
 		claudeEnabled:   cl.Enabled,
+		uiConfig:        ui,
 		codexUIConfig:   cx.UI,
 		claudeUIConfig:  cl.UI,
 		orUIConfig:      or.UI,
@@ -395,13 +397,20 @@ func renderBar(label string, usedPercent, elapsedPercent float64, barWidth int, 
 	return b.String()
 }
 
-const compactResetWidth = 8 // fixed width for reset info, e.g. "168h 59m"
+// fixed width for reset info, e.g. "168h 59m" or "6d 23h 59m" with duration_days
+func (m Model) resetInfoWidth() int {
+	if m.uiConfig.DurationDays {
+		return 10
+	}
+	return 8
+}
 
-func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidth int, resetInfo string) string {
+func (m Model) renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidth int, resetInfo string) string {
 	used := math.Min(usedPercent, 100)
 
 	// Shrink bar to fit label, pct, and fixed-width reset info on one line
-	overhead := barPadding + compactResetWidth - 2
+	resetWidth := m.resetInfoWidth()
+	overhead := barPadding + resetWidth - 2
 	compactBarWidth := barWidth - overhead
 	compactBarWidth = max(compactBarWidth, 10)
 
@@ -422,7 +431,7 @@ func renderCompactBar(label string, usedPercent, elapsedPercent float64, barWidt
 		}
 	}
 
-	reset := fmt.Sprintf("%*s", compactResetWidth, resetInfo)
+	reset := fmt.Sprintf("%*s", resetWidth, resetInfo)
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "  %s%s  %s  %s\n",
@@ -467,15 +476,18 @@ func elapsedPercent(resetAt time.Time, windowDuration time.Duration) float64 {
 	return float64(windowDuration-remaining) / float64(windowDuration) * 100
 }
 
-func timeUntil(t time.Time) string {
+func (m Model) timeUntil(t time.Time) string {
 	d := time.Until(t)
 	if d < 0 {
 		return "expired"
 	}
 	h := int(d.Hours())
-	m := int(d.Minutes()) % 60
-	if h > 0 {
-		return fmt.Sprintf("%dh %dm", h, m)
+	mins := int(d.Minutes()) % 60
+	if m.uiConfig.DurationDays && h >= 24 {
+		return fmt.Sprintf("%dd %dh %dm", h/24, h%24, mins)
 	}
-	return fmt.Sprintf("%dm", m)
+	if h > 0 {
+		return fmt.Sprintf("%dh %dm", h, mins)
+	}
+	return fmt.Sprintf("%dm", mins)
 }
