@@ -321,3 +321,14 @@ func TestBuildBarCellsWithoutPaceDataUsesNormalFill(t *testing.T) {
 func TestOverPaceColorKeepsRedBarsDistinct(t *testing.T) {
 	assert.Equal(t, brightRed, overPaceColor(red))
 }
+
+func TestTimeUntilDurationDays(t *testing.T) {
+	reset := time.Now().Add(127*time.Hour + 21*time.Minute + 30*time.Second)
+
+	plain := Model{}
+	assert.Equal(t, "127h 21m", plain.timeUntil(reset))
+
+	days := Model{uiConfig: config.UIConfig{DurationDays: true}}
+	assert.Equal(t, "5d 7h 21m", days.timeUntil(reset))
+	assert.Equal(t, "4h 57m", days.timeUntil(time.Now().Add(4*time.Hour+57*time.Minute+30*time.Second)))
+}

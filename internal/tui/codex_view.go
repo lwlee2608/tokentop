@@ -71,14 +71,14 @@ func (m Model) codexSectionBody() string {
 	b.WriteByte('\n')
 
 	if w := u.RateLimit.PrimaryWindow; w != nil {
-		b.WriteString(renderCompactBar("5h Limit", w.UsedPercent, m.codexElapsedPercent(w), bw, timeUntil(w.ResetTime())))
+		b.WriteString(m.renderCompactBar("5h Limit", w.UsedPercent, m.codexElapsedPercent(w), bw, m.timeUntil(w.ResetTime())))
 	}
 	if w := u.RateLimit.SecondaryWindow; w != nil {
-		b.WriteString(renderCompactBar("Weekly  ", w.UsedPercent, m.codexElapsedPercent(w), bw, timeUntil(w.ResetTime())))
+		b.WriteString(m.renderCompactBar("Weekly  ", w.UsedPercent, m.codexElapsedPercent(w), bw, m.timeUntil(w.ResetTime())))
 	}
 	if m.codexUIConfig.CodeReview {
 		if w := u.CodeReviewRateLimit.PrimaryWindow; w != nil {
-			b.WriteString(renderCompactBar("Code Review", w.UsedPercent, m.codexElapsedPercent(w), bw, timeUntil(w.ResetTime())))
+			b.WriteString(m.renderCompactBar("Code Review", w.UsedPercent, m.codexElapsedPercent(w), bw, m.timeUntil(w.ResetTime())))
 		}
 	}
 

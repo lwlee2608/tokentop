@@ -20,11 +20,11 @@ func (m Model) renderORStandardBody(u *openrouter.Usage) string {
 			label = fmt.Sprintf("%-8s", periodLabel)
 			barCoversPeriod = true
 		}
-		info := truncate(u.Key.LimitReset, compactResetWidth)
+		info := truncate(u.Key.LimitReset, m.resetInfoWidth())
 		if hasPeriod {
 			info = fmt.Sprintf("$%.2f", u.Key.LimitRemaining)
 		}
-		b.WriteString(renderCompactBar(label, usedPct, -1, bw, info))
+		b.WriteString(m.renderCompactBar(label, usedPct, -1, bw, info))
 	}
 
 	parts := make([]string, 0, 3)
