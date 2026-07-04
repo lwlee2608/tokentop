@@ -1,5 +1,7 @@
 log:
   level: info
+  # Where to write logs. Empty = ~/.local/state/tokentop/tokentop.log
+  # (honors $XDG_STATE_HOME). Set an absolute path to override.
   path: ""
 
 refresh:
