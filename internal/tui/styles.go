@@ -177,7 +177,7 @@ func usageColor(pct float64) lipgloss.Color {
 	switch {
 	case pct >= 90:
 		return red
-	case pct >= 70:
+	case pct >= 75:
 		return yellow
 	default:
 		return green
