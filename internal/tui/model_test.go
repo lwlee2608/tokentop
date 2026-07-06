@@ -319,7 +319,7 @@ func TestBuildBarCellsWithoutPaceDataUsesNormalFill(t *testing.T) {
 }
 
 func TestOverPaceColorKeepsRedBarsDistinct(t *testing.T) {
-	assert.Equal(t, brightRed, overPaceColor(red))
+	assert.Equal(t, darkMaroon, overPaceColor(red))
 }
 
 func TestTimeUntilDurationDays(t *testing.T) {

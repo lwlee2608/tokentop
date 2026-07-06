@@ -11,17 +11,17 @@ import (
 const barPadding = 12
 
 var (
-	green     = lipgloss.Color("2")
-	cyan      = lipgloss.Color("6")
-	blue      = lipgloss.Color("12")
-	orange    = lipgloss.Color("208")
-	pink      = lipgloss.Color("205")
-	yellow    = lipgloss.Color("3")
-	red       = lipgloss.Color("1")
-	brightRed = lipgloss.Color("9")
-	white     = lipgloss.Color("15")
-	gray      = lipgloss.Color("237")
-	slack     = lipgloss.Color("244")
+	green      = lipgloss.Color("2")
+	cyan       = lipgloss.Color("6")
+	blue       = lipgloss.Color("12")
+	orange     = lipgloss.Color("208")
+	pink       = lipgloss.Color("205")
+	yellow     = lipgloss.Color("3")
+	red        = lipgloss.Color("1")
+	darkMaroon = lipgloss.Color("52")
+	white      = lipgloss.Color("15")
+	gray       = lipgloss.Color("237")
+	slack      = lipgloss.Color("244")
 
 	dimStyle   = lipgloss.NewStyle().Faint(true)
 	labelStyle = lipgloss.NewStyle().Bold(true).Foreground(white)
@@ -61,7 +61,7 @@ func overPaceColor(c lipgloss.Color) lipgloss.Color {
 	case yellow:
 		return red
 	case red:
-		return brightRed
+		return darkMaroon
 	default:
 		return red
 	}
