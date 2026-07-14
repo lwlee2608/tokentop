@@ -55,7 +55,7 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 					ResetAt:            now.Add(4 * 24 * time.Hour).Unix(),
 				},
 			},
-			CodeReviewRateLimit: codex.RateLimit{
+			CodeReviewRateLimit: &codex.RateLimit{
 				PrimaryWindow: &codex.UsageWindow{
 					UsedPercent:        90,
 					LimitWindowSeconds: 7 * 24 * 60 * 60,
@@ -82,6 +82,25 @@ func TestCodexSectionRenderSnapshot(t *testing.T) {
 	want, err := os.ReadFile(goldenPath)
 	require.NoError(t, err, "read golden")
 	assert.Equal(t, string(want), got, "codex section mismatch")
+}
+
+func TestCodexWindowLabel(t *testing.T) {
+	tests := []struct {
+		name    string
+		seconds int
+		want    string
+	}{
+		{name: "five hours", seconds: 5 * 60 * 60, want: "5h Limit"},
+		{name: "weekly", seconds: 7 * 24 * 60 * 60, want: "Weekly  "},
+		{name: "monthly", seconds: 30 * 24 * 60 * 60, want: "Monthly "},
+		{name: "unknown", seconds: 24 * 60 * 60, want: "Limit   "},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, codexWindowLabel(&codex.UsageWindow{LimitWindowSeconds: tt.seconds}))
+		})
+	}
 }
 
 func TestFormatClaudeTier(t *testing.T) {
