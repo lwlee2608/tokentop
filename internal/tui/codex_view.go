@@ -19,6 +19,19 @@ func (m Model) codexElapsedPercent(w *codex.UsageWindow) float64 {
 	return elapsedPercent(w.ResetTime(), time.Duration(w.LimitWindowSeconds)*time.Second)
 }
 
+func codexWindowLabel(w *codex.UsageWindow) string {
+	switch time.Duration(w.LimitWindowSeconds) * time.Second {
+	case 5 * time.Hour:
+		return "5h Limit"
+	case 7 * 24 * time.Hour:
+		return "Weekly  "
+	case 30 * 24 * time.Hour:
+		return "Monthly "
+	default:
+		return "Limit   "
+	}
+}
+
 func (m Model) codexSection() string {
 	return sectionBox("Codex", m.codexSectionBody(), m.width)
 }
@@ -71,12 +84,12 @@ func (m Model) codexSectionBody() string {
 	b.WriteByte('\n')
 
 	if w := u.RateLimit.PrimaryWindow; w != nil {
-		b.WriteString(m.renderCompactBar("5h Limit", w.UsedPercent, m.codexElapsedPercent(w), bw, m.timeUntil(w.ResetTime())))
+		b.WriteString(m.renderCompactBar(codexWindowLabel(w), w.UsedPercent, m.codexElapsedPercent(w), bw, m.timeUntil(w.ResetTime())))
 	}
 	if w := u.RateLimit.SecondaryWindow; w != nil {
-		b.WriteString(m.renderCompactBar("Weekly  ", w.UsedPercent, m.codexElapsedPercent(w), bw, m.timeUntil(w.ResetTime())))
+		b.WriteString(m.renderCompactBar(codexWindowLabel(w), w.UsedPercent, m.codexElapsedPercent(w), bw, m.timeUntil(w.ResetTime())))
 	}
-	if m.codexUIConfig.CodeReview {
+	if m.codexUIConfig.CodeReview && u.CodeReviewRateLimit != nil {
 		if w := u.CodeReviewRateLimit.PrimaryWindow; w != nil {
 			b.WriteString(m.renderCompactBar("Code Review", w.UsedPercent, m.codexElapsedPercent(w), bw, m.timeUntil(w.ResetTime())))
 		}

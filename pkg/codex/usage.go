@@ -17,7 +17,7 @@ const LoginHint = "run `codex login` to sign in"
 type Usage struct {
 	PlanType            string       `json:"plan_type"`
 	RateLimit           RateLimit    `json:"rate_limit"`
-	CodeReviewRateLimit RateLimit    `json:"code_review_rate_limit"`
+	CodeReviewRateLimit *RateLimit   `json:"code_review_rate_limit"`
 	Credits             UsageCredits `json:"credits"`
 }
 
