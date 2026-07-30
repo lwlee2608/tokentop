@@ -109,7 +109,11 @@ func (m Model) vrSectionBody() string {
 				dimStyle.Render(fmt.Sprintf("%5s  $%.2f spent (no limit)", "—", w.SpentUSD)) + "\n")
 			continue
 		}
-		b.WriteString(m.renderCompactBar(label, w.UsedPercent(), m.vrElapsedPercent(w), bw, m.timeUntil(w.ResetAt)))
+		resetInfo := ""
+		if !w.ResetAt.IsZero() {
+			resetInfo = m.timeUntil(w.ResetAt)
+		}
+		b.WriteString(m.renderCompactBar(label, w.UsedPercent(), m.vrElapsedPercent(w), bw, resetInfo))
 	}
 
 	if m.vrUIConfig.Lifetime {

@@ -373,6 +373,26 @@ func TestVelociRouterSectionRenderSnapshot(t *testing.T) {
 	assert.Equal(t, string(want), got, "velocirouter section mismatch")
 }
 
+func TestVelociRouterSectionOmitsResetWhenUnknown(t *testing.T) {
+	forceTrueColorProfile(t)
+
+	limit := 20.0
+	m := Model{
+		width:      85,
+		vrUIConfig: config.VelociRouterUIConfig{PaceTick: true},
+		vrAuth:     &velocirouter.Auth{APIKey: "rt-EXAMPLE00xxxxa29"},
+		vrUsage: &velocirouter.Usage{
+			Windows: []velocirouter.Window{
+				{Name: "5h", LimitUSD: &limit, SpentUSD: 3.75, Duration: 5 * time.Hour},
+			},
+		},
+	}
+
+	got := m.vrSection()
+	assert.Contains(t, got, "5h Limit")
+	assert.NotContains(t, got, "expired")
+}
+
 func TestClipLineKeepsWideRunesWithinMaxWidth(t *testing.T) {
 	got := clipLine("Status: 警告 warning", 10)
 
