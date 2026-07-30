@@ -20,7 +20,8 @@ Flags override the `providers` section of the config for the current run only.
 | `--codex`      | Run with only Codex |
 | `--claude`     | Run with only Claude |
 | `--openrouter` | Run with only OpenRouter |
-| `--all`        | Force all three providers on |
+| `--velocirouter` | Run with only VelociRouter |
+| `--all`        | Force all providers on |
 | `--version`    | Print version and exit |
 
 Example:

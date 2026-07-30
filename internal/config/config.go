@@ -15,13 +15,14 @@ import (
 )
 
 type Config struct {
-	Log          LogConfig          `mapstructure:"log"`
-	Refresh      RefreshConfig      `mapstructure:"refresh"`
-	Providers    ProvidersConfig    `mapstructure:"providers"`
-	UI           UIConfig           `mapstructure:"ui"`
-	CodexUI      CodexUIConfig      `mapstructure:"codex_ui"`
-	ClaudeUI     ClaudeUIConfig     `mapstructure:"claude_ui"`
-	OpenRouterUI OpenRouterUIConfig `mapstructure:"openrouter_ui"`
+	Log            LogConfig            `mapstructure:"log"`
+	Refresh        RefreshConfig        `mapstructure:"refresh"`
+	Providers      ProvidersConfig      `mapstructure:"providers"`
+	UI             UIConfig             `mapstructure:"ui"`
+	CodexUI        CodexUIConfig        `mapstructure:"codex_ui"`
+	ClaudeUI       ClaudeUIConfig       `mapstructure:"claude_ui"`
+	OpenRouterUI   OpenRouterUIConfig   `mapstructure:"openrouter_ui"`
+	VelociRouterUI VelociRouterUIConfig `mapstructure:"velocirouter_ui"`
 }
 
 type LogConfig struct {
@@ -34,9 +35,10 @@ type RefreshConfig struct {
 }
 
 type ProvidersConfig struct {
-	Codex      ProviderConfig `mapstructure:"codex"`
-	OpenRouter ProviderConfig `mapstructure:"openrouter"`
-	Anthropic  ProviderConfig `mapstructure:"anthropic"`
+	Codex        ProviderConfig `mapstructure:"codex"`
+	OpenRouter   ProviderConfig `mapstructure:"openrouter"`
+	Anthropic    ProviderConfig `mapstructure:"anthropic"`
+	VelociRouter ProviderConfig `mapstructure:"velocirouter"`
 }
 
 type ProviderConfig struct {
@@ -62,6 +64,11 @@ type OpenRouterUIConfig struct {
 	TopModels  bool   `mapstructure:"top_models"`
 	APIKeys    bool   `mapstructure:"api_keys"`
 	Metric     string `mapstructure:"metric"` // spend | requests | tokens
+}
+
+type VelociRouterUIConfig struct {
+	PaceTick bool `mapstructure:"pace_tick"`
+	Lifetime bool `mapstructure:"lifetime"`
 }
 
 func Load() (*Config, error) {
@@ -96,6 +103,10 @@ func Load() (*Config, error) {
 			TopModels:  true,
 			APIKeys:    true,
 			Metric:     "spend",
+		},
+		VelociRouterUI: VelociRouterUIConfig{
+			PaceTick: true,
+			Lifetime: true,
 		},
 	}
 

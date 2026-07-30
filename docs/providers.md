@@ -1,12 +1,13 @@
 # Providers
 
-TokenTop does not ask you to create or paste API keys for Codex or Claude. If you are already signed in to the [Codex CLI](https://github.com/openai/codex) or [Claude Code CLI](https://claude.com/claude-code), TokenTop picks those credentials up automatically — there is nothing else to configure. OpenRouter is the only provider that needs a key in your shell, because it does not ship a CLI that stores one.
+TokenTop does not ask you to create or paste API keys for Codex or Claude. If you are already signed in to the [Codex CLI](https://github.com/openai/codex) or [Claude Code CLI](https://claude.com/claude-code), TokenTop picks those credentials up automatically — there is nothing else to configure. OpenRouter and VelociRouter need a key in your shell, because neither ships a CLI that stores one.
 
-| Provider   | Credential source                                              | Shows |
-|------------|----------------------------------------------------------------|-------|
-| Codex      | `~/.codex/auth.json`                                           | ChatGPT/Codex rate limits |
-| OpenRouter | `OPENROUTER_API_KEY` env var                                   | Credit + activity |
-| Claude     | macOS keychain (`Claude Code-credentials`) or `~/.claude/.credentials.json` | Session + weekly limits |
+| Provider     | Credential source                                              | Shows |
+|--------------|----------------------------------------------------------------|-------|
+| Codex        | `~/.codex/auth.json`                                           | ChatGPT/Codex rate limits |
+| OpenRouter   | `OPENROUTER_API_KEY` env var                                   | Credit + activity |
+| VelociRouter | `VELOCIROUTER_API_KEY` env var                                 | Per-key spend windows + lifetime totals |
+| Claude       | macOS keychain (`Claude Code-credentials`) or `~/.claude/.credentials.json` | Session + weekly limits |
 
 A provider is skipped (with a warning) if its credential is missing. TokenTop exits with an error only when *no* provider has valid credentials.
 
@@ -39,6 +40,22 @@ Put it in your shell rc (`~/.zshrc`, `~/.bashrc`) to persist.
 - **Free-tier key** — detected and labeled; limited data available.
 
 The key type is detected automatically on first fetch and logged at info level.
+
+## VelociRouter
+
+**Credential:** `VELOCIROUTER_API_KEY` environment variable.
+
+```sh
+export VELOCIROUTER_API_KEY="rt-..."
+```
+
+Create a key from the Keys page in the [VelociRouter](https://velocirouter.site/) console and put the export in your shell rc to persist.
+
+VelociRouter is disabled by default. Enable it with `providers.velocirouter.enabled: true` or run `tokentop --velocirouter`.
+
+**Shown:** key name and prefix, one bar per spend window (`5h`, `weekly`), and lifetime request/token/cost totals.
+
+A window with no configured limit has no percentage to render, so TokenTop shows its raw spend instead. Reading usage does not count against your key, and the endpoint stays readable after a limit is reached.
 
 ## Claude (Anthropic)
 
