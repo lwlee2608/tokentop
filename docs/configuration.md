@@ -27,6 +27,8 @@ providers:
     enabled: true
   anthropic:
     enabled: true
+  velocirouter:
+    enabled: false
 
 codex_ui:
   code_review: false
@@ -41,6 +43,10 @@ openrouter_ui:
   top_models: true
   api_keys: false
   metric: spend  # spend | requests | tokens
+
+velocirouter_ui:
+  pace_tick: true
+  lifetime: true
 ```
 
 ## Fields
@@ -67,6 +73,7 @@ Each provider has a single `enabled` boolean. Disabling a provider skips its aut
 | `providers.codex`      | `true`  | OpenAI Codex (ChatGPT subscription). |
 | `providers.openrouter` | `true`  | OpenRouter. |
 | `providers.anthropic`  | `true`  | Anthropic (Claude Code subscription). |
+| `providers.velocirouter` | `false` | VelociRouter. |
 
 A provider with `enabled: true` but missing credentials is logged as a warning and skipped — TokenTop still starts as long as at least one provider has working credentials.
 
@@ -96,6 +103,13 @@ These settings only apply when the configured `OPENROUTER_API_KEY` is a **manage
 | `top_models`  | `true`  | Show the top models by spend. |
 | `api_keys`    | `false` | List every key on the account with per-key spend. |
 | `metric`      | `spend` | Initial metric for daily spend and top models charts. One of `spend`, `requests`, `tokens`. Cycle at runtime with `m`. |
+
+### `velocirouter_ui`
+
+| Key         | Default | Description |
+|-------------|---------|-------------|
+| `pace_tick` | `true`  | Split usage bars at the time-elapsed mark to show over/under-pace burn. |
+| `lifetime`  | `true`  | Show the key's lifetime request, token, and cost totals. |
 
 ## Examples
 

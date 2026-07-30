@@ -13,6 +13,7 @@ import (
 	"github.com/lwlee2608/tokentop/pkg/claude"
 	"github.com/lwlee2608/tokentop/pkg/codex"
 	"github.com/lwlee2608/tokentop/pkg/openrouter"
+	"github.com/lwlee2608/tokentop/pkg/velocirouter"
 	"github.com/muesli/termenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -307,6 +308,89 @@ func TestOpenRouterCompactDailyKeySnapshot(t *testing.T) {
 	want, err := os.ReadFile(goldenPath)
 	require.NoError(t, err, "read golden")
 	assert.Equal(t, string(want), got, "openrouter compact section mismatch")
+}
+
+func TestVelociRouterSectionShowsHintWhenCredentialsMissing(t *testing.T) {
+	forceTrueColorProfile(t)
+	m := Model{width: 85, vrEnabled: true}
+	got := m.vrSection()
+	assert.Contains(t, got, "credentials not found")
+	assert.Contains(t, got, velocirouter.LoginHint)
+}
+
+func TestVelociRouterSectionShowsHintOnAuthFailure(t *testing.T) {
+	forceTrueColorProfile(t)
+	m := Model{
+		width:        85,
+		vrEnabled:    true,
+		vrAuth:       &velocirouter.Auth{APIKey: "rt-bad"},
+		vrErr:        "VelociRouter API /usage/key 401: invalid key: unauthorized",
+		vrAuthFailed: true,
+	}
+	got := m.vrSection()
+	assert.Contains(t, got, "401")
+	assert.Contains(t, got, velocirouter.LoginHint)
+}
+
+func TestVelociRouterSectionRenderSnapshot(t *testing.T) {
+	forceTrueColorProfile(t)
+
+	now := time.Now()
+	limit := 20.0
+	m := Model{
+		width: 85,
+		vrUIConfig: config.VelociRouterUIConfig{
+			PaceTick: true,
+			Lifetime: true,
+		},
+		vrAuth: &velocirouter.Auth{APIKey: "rt-EXAMPLE00xxxxa29"},
+		vrUsage: &velocirouter.Usage{
+			Key: velocirouter.Key{Name: "laptop", Prefix: "rt-EXAMPLE00"},
+			Lifetime: velocirouter.Lifetime{
+				Requests:    1284,
+				TotalTokens: 5_000_000,
+				CostUSD:     42.5,
+			},
+			Windows: []velocirouter.Window{
+				{Name: "5h", LimitUSD: &limit, SpentUSD: 3.75, ResetAt: now.Add(80 * time.Minute), Duration: 5 * time.Hour},
+				{Name: "weekly", SpentUSD: 18.2, ResetAt: now.Add(4 * 24 * time.Hour), Duration: 7 * 24 * time.Hour},
+			},
+		},
+	}
+
+	got := m.vrSection()
+	if testing.Verbose() {
+		fmt.Print(got)
+	}
+	goldenPath := filepath.Join("testdata", "velocirouter_compact.golden")
+
+	if *updateGolden {
+		require.NoError(t, os.WriteFile(goldenPath, []byte(got), 0644), "write golden")
+	}
+
+	want, err := os.ReadFile(goldenPath)
+	require.NoError(t, err, "read golden")
+	assert.Equal(t, string(want), got, "velocirouter section mismatch")
+}
+
+func TestVelociRouterSectionOmitsResetWhenUnknown(t *testing.T) {
+	forceTrueColorProfile(t)
+
+	limit := 20.0
+	m := Model{
+		width:      85,
+		vrUIConfig: config.VelociRouterUIConfig{PaceTick: true},
+		vrAuth:     &velocirouter.Auth{APIKey: "rt-EXAMPLE00xxxxa29"},
+		vrUsage: &velocirouter.Usage{
+			Windows: []velocirouter.Window{
+				{Name: "5h", LimitUSD: &limit, SpentUSD: 3.75, Duration: 5 * time.Hour},
+			},
+		},
+	}
+
+	got := m.vrSection()
+	assert.Contains(t, got, "5h Limit")
+	assert.NotContains(t, got, "expired")
 }
 
 func TestClipLineKeepsWideRunesWithinMaxWidth(t *testing.T) {

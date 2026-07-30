@@ -14,6 +14,8 @@ providers:
     enabled: true
   openrouter:
     enabled: false
+  velocirouter:
+    enabled: false
 
 codex_ui:
   code_review: false
@@ -28,6 +30,10 @@ openrouter_ui:
   top_models: true
   api_keys: false
   metric: spend  # spend | requests | tokens
+
+velocirouter_ui:
+  pace_tick: true
+  lifetime: true
 
 ui:
   duration_days: false

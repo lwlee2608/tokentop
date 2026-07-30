@@ -13,6 +13,7 @@ import (
 	"github.com/lwlee2608/tokentop/pkg/claude"
 	"github.com/lwlee2608/tokentop/pkg/codex"
 	"github.com/lwlee2608/tokentop/pkg/openrouter"
+	"github.com/lwlee2608/tokentop/pkg/velocirouter"
 )
 
 const (
@@ -47,6 +48,14 @@ type claudeUsageMsg struct {
 
 type claudeRetryMsg struct{ gen uint64 }
 
+type vrUsageMsg struct {
+	usage *velocirouter.Usage
+	err   error
+	gen   uint64
+}
+
+type vrRetryMsg struct{ gen uint64 }
+
 type Model struct {
 	version         string
 	width           int
@@ -58,6 +67,7 @@ type Model struct {
 	codexUIConfig   config.CodexUIConfig
 	claudeUIConfig  config.ClaudeUIConfig
 	orUIConfig      config.OpenRouterUIConfig
+	vrUIConfig      config.VelociRouterUIConfig
 
 	codexAuth       *codex.Auth
 	codexUsage      *codex.Usage
@@ -80,6 +90,13 @@ type Model struct {
 	claudeRetries    int
 	claudeEnabled    bool
 	claudeAuthFailed bool
+
+	vrAuth       *velocirouter.Auth
+	vrUsage      *velocirouter.Usage
+	vrErr        string
+	vrRetries    int
+	vrEnabled    bool
+	vrAuthFailed bool
 }
 
 type CodexProvider struct {
@@ -100,7 +117,13 @@ type ClaudeProvider struct {
 	UI      config.ClaudeUIConfig
 }
 
-func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, ui config.UIConfig, refresh config.RefreshConfig, version string) Model {
+type VelociRouterProvider struct {
+	Auth    *velocirouter.Auth
+	Enabled bool
+	UI      config.VelociRouterUIConfig
+}
+
+func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, vr VelociRouterProvider, ui config.UIConfig, refresh config.RefreshConfig, version string) Model {
 	refreshInterval := time.Duration(refresh.IntervalSeconds) * time.Second
 	return Model{
 		codexAuth:       cx.Auth,
@@ -109,10 +132,13 @@ func New(cx CodexProvider, or OpenRouterProvider, cl ClaudeProvider, ui config.U
 		orEnabled:       or.Enabled,
 		claudeAuth:      cl.Auth,
 		claudeEnabled:   cl.Enabled,
+		vrAuth:          vr.Auth,
+		vrEnabled:       vr.Enabled,
 		uiConfig:        ui,
 		codexUIConfig:   cx.UI,
 		claudeUIConfig:  cl.UI,
 		orUIConfig:      or.UI,
+		vrUIConfig:      vr.UI,
 		orMetric:        parseMetric(or.UI.Metric),
 		version:         version,
 		refreshInterval: refreshInterval,
@@ -130,6 +156,9 @@ func (m Model) Init() tea.Cmd {
 	}
 	if m.claudeAuth != nil {
 		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth, m.gen))
+	}
+	if m.vrAuth != nil {
+		cmds = append(cmds, fetchVRUsage(m.vrAuth, m.gen))
 	}
 	return tea.Batch(cmds...)
 }
@@ -174,6 +203,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, fetchClaudeUsage(m.claudeAuth, m.gen)
+
+	case vrRetryMsg:
+		if msg.gen != m.gen {
+			return m, nil
+		}
+		return m, fetchVRUsage(m.vrAuth, m.gen)
 
 	case codexUsageMsg:
 		if msg.gen != m.gen {
@@ -240,6 +275,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.lastFetch = time.Now()
 			slog.Debug("claude usage refresh succeeded")
 		}
+
+	case vrUsageMsg:
+		if msg.gen != m.gen {
+			return m, nil
+		}
+		if msg.err != nil {
+			m.vrErr = msg.err.Error()
+			m.vrAuthFailed = errors.Is(msg.err, velocirouter.ErrUnauthorized)
+			if cmd := m.scheduleRetry("velocirouter", &m.vrRetries, msg.err, func(g uint64) tea.Msg { return vrRetryMsg{gen: g} }); cmd != nil {
+				return m, cmd
+			}
+		} else {
+			m.vrUsage = msg.usage
+			m.vrErr = ""
+			m.vrAuthFailed = false
+			m.vrRetries = 0
+			m.lastFetch = time.Now()
+			slog.Debug("velocirouter usage refresh succeeded")
+		}
 	}
 	return m, nil
 }
@@ -264,6 +318,7 @@ func (m Model) refresh() (tea.Model, tea.Cmd) {
 	m.codexRetries = 0
 	m.orRetries = 0
 	m.claudeRetries = 0
+	m.vrRetries = 0
 	slog.Debug("starting usage refresh", "gen", m.gen)
 	var cmds []tea.Cmd
 	if m.codexAuth != nil {
@@ -274,6 +329,9 @@ func (m Model) refresh() (tea.Model, tea.Cmd) {
 	}
 	if m.claudeAuth != nil {
 		cmds = append(cmds, fetchClaudeUsage(m.claudeAuth, m.gen))
+	}
+	if m.vrAuth != nil {
+		cmds = append(cmds, fetchVRUsage(m.vrAuth, m.gen))
 	}
 	cmds = append(cmds, m.tick())
 	return m, tea.Batch(cmds...)
@@ -296,6 +354,9 @@ func (m Model) View() string {
 	}
 	if m.orAuth != nil || m.orEnabled {
 		b.WriteString(m.orSection())
+	}
+	if m.vrAuth != nil || m.vrEnabled {
+		b.WriteString(m.vrSection())
 	}
 
 	b.WriteString(m.footer())
