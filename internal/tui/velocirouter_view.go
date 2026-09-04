@@ -39,7 +39,7 @@ func (m Model) renderVRKeyHeader() string {
 			parts = append(parts, m.vrUsage.Key.Name)
 		}
 		if m.vrUsage.Key.Prefix != "" {
-			parts = append(parts, m.vrUsage.Key.Prefix)
+			parts = append(parts, m.vrUsage.Key.Prefix+"…")
 		}
 	}
 	if len(parts) == 0 && m.vrAuth != nil && m.vrAuth.APIKey != "" {
