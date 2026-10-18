@@ -16,6 +16,12 @@ A terminal dashboard for monitoring your API usage in real time. Supports [Claud
 curl -fsSL https://raw.githubusercontent.com/lwlee2608/tokentop/main/install.sh | sh
 ```
 
+Or with Homebrew (macOS):
+
+```sh
+brew install lwlee2608/tap/tokentop
+```
+
 Or build from source:
 
 ```sh
@@ -24,7 +30,7 @@ cd tokentop
 make install
 ```
 
-Both methods install the binary to `~/.local/bin/tokentop`. Override with `PREFIX=/usr/local`.
+The script and source methods install the binary to `~/.local/bin/tokentop`. Override with `PREFIX=/usr/local`.
 
 ## Prerequisites
 
